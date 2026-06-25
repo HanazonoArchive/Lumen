@@ -162,24 +162,42 @@ fn scan_folder(path: String, state: State<AppState>) -> Result<String, String> {
 }
 
 fn resolve_db_path() -> std::path::PathBuf {
-    // Try: same dir as binary (release)
+    // Primary: write to %LOCALAPPDATA%/Lumen/signatures.db (writable after MSI install)
+    if let Ok(local) = std::env::var("LOCALAPPDATA") {
+        let app_dir = std::path::Path::new(&local).join("Lumen");
+        let _ = std::fs::create_dir_all(&app_dir);
+        let db = app_dir.join("signatures.db");
+        // If it exists or we can't find another one, use this
+        if db.exists() {
+            return db;
+        }
+    }
+
+    // Fallback: look for existing DB near the binary (dev mode)
     if let Ok(exe) = std::env::current_exe() {
         let exe_dir = exe.parent().unwrap_or_else(|| std::path::Path::new("."));
-        for &depth in &[0u32, 2u32] {
-            // depth 0 = binary dir (release), depth 2 = workspace root (dev: target/debug/ → Lumen/)
-            let base = exe_dir.ancestors().nth(depth as usize).unwrap_or(exe_dir);
+        for depth in &[0u32, 2u32] {
+            let base = exe_dir.ancestors().nth(*depth as usize).unwrap_or(exe_dir);
             let db = base.join("signatures.db");
             if db.exists() { return db; }
         }
     }
-    // Fallback: CWD + try going up one level (src-tauri/ → lumen-gui/)
+
+    // Fallback: CWD
     let cwd = std::env::current_dir().unwrap_or_default();
-    for &depth in &[0u32, 1u32, 2u32] {
-        let base = cwd.ancestors().nth(depth as usize).unwrap_or(&cwd);
+    for depth in &[0u32, 1u32, 2u32] {
+        let base = cwd.ancestors().nth(*depth as usize).unwrap_or(&cwd);
         let db = base.join("signatures.db");
         if db.exists() { return db; }
     }
-    // Last resort
+
+    // Last resort: write to LOCALAPPDATA/Lumen/ (create if we didn't above)
+    if let Ok(local) = std::env::var("LOCALAPPDATA") {
+        let app_dir = std::path::Path::new(&local).join("Lumen");
+        let _ = std::fs::create_dir_all(&app_dir);
+        return app_dir.join("signatures.db");
+    }
+
     std::path::PathBuf::from("signatures.db")
 }
 

@@ -14,13 +14,24 @@ pub struct Engine {
 }
 
 impl Engine {
-    /// Open (or create) the signature DB at the given path
+    /// Open (or create) the signature DB at the given path.
+    /// Auto-seeds if the DB is empty (fresh install).
     pub fn new(db_path: &str) -> Result<Self, String> {
         // Clean up any stale temp extraction dirs from previous runs
         crate::scanner::cleanup_temp_dirs();
 
         let conn = db::open_db(db_path).map_err(|e| e.to_string())?;
         db::ensure_schema(&conn).map_err(|e| e.to_string())?;
+
+        // Auto-seed if empty (fresh install / first launch)
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM signatures", [], |r| r.get(0))
+            .map_err(|e| e.to_string())?;
+        if count == 0 {
+            let n = db::seed_database(&conn).map_err(|e| e.to_string())?;
+            eprintln!("Lumen: auto-seeded {} signatures into {}", n, db_path);
+        }
+
         Ok(Self { conn })
     }
 

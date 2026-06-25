@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "http-server src -p 1420 -c-1 --cors",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

@@ -1,7 +1,8 @@
-fix: add has_root() check to prevent path traversal in archive extractors
+feat: auto-seed DB on first launch, fix DB path for MSI install, add npm scripts
 
-Windows /foo is not absolute but Path::join replaces drive root (C:\foo).
-Added safe_path.has_root() check to zip, tar, and 7z extractors to reject
-archive entries with root components.
+- Engine::new() auto-seeds if signatures table empty (no manual lumen-seed needed)
+- resolve_db_path() uses %LOCALAPPDATA%/Lumen/signatures.db as writable path
+  for MSI installs, with backward-compatible exe-dir fallback for dev
+- Add npm run tauri:dev and npm run tauri:build scripts
 
 Co-Authored-By: Claude noreply@anthropic.com
