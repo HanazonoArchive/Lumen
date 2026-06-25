@@ -1,0 +1,7 @@
+fix: add has_root() check to prevent path traversal in archive extractors
+
+Windows /foo is not absolute but Path::join replaces drive root (C:\foo).
+Added safe_path.has_root() check to zip, tar, and 7z extractors to reject
+archive entries with root components.
+
+Co-Authored-By: Claude noreply@anthropic.com

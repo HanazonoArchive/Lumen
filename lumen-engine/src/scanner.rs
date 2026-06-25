@@ -149,7 +149,7 @@ fn extract_and_scan_zip(conn: &rusqlite::Connection, path: &Path) -> Result<Vec<
 
         // Sanitize: prevent zip slip (path traversal)
         let safe_name = std::path::Path::new(&entry_name);
-        if safe_name.is_absolute() || safe_name.components().any(|c| c == std::path::Component::ParentDir) {
+        if safe_name.is_absolute() || safe_name.has_root() || safe_name.components().any(|c| c == std::path::Component::ParentDir) {
             eprintln!("lumen: zip slip attempt skipped: {}", entry_name);
             continue;
         }
@@ -243,7 +243,7 @@ fn extract_and_scan_tar(conn: &rusqlite::Connection, path: &Path) -> Result<Vec<
 
             // Prevent tar slip
             let safe_path = std::path::Path::new(&entry_name);
-            if safe_path.is_absolute() || safe_path.components().any(|c| c == std::path::Component::ParentDir) {
+            if safe_path.is_absolute() || safe_path.has_root() || safe_path.components().any(|c| c == std::path::Component::ParentDir) {
                 eprintln!("lumen: tar slip attempt skipped: {}", entry_name);
                 continue;
             }
@@ -357,7 +357,7 @@ fn extract_and_scan_7z(conn: &rusqlite::Connection, path: &Path) -> Result<Vec<S
 
         // Sanitize path
         let safe_path = std::path::Path::new(&entry_name);
-        if safe_path.is_absolute() || safe_path.components().any(|c| c == std::path::Component::ParentDir) {
+        if safe_path.is_absolute() || safe_path.has_root() || safe_path.components().any(|c| c == std::path::Component::ParentDir) {
             eprintln!("lumen: 7z slip attempt skipped: {}", entry_name);
             return Ok(true);
         }
