@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Lumen",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "identifier": "com.hanazono.lumen",
   "build": {
     "frontendDist": "../src",
     "beforeDevCommand": "",
-    "beforeBuildCommand": "powershell -ExecutionPolicy Bypass -File \"../download-7z.ps1\""
+    "beforeBuildCommand": "powershell -ExecutionPolicy Bypass -Command \"& '..\\download-7z.ps1'\""
   },
   "bundle": {
     "active": true,
