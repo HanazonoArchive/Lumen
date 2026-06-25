@@ -29,13 +29,21 @@ fn pick_folder() -> Result<String, String> {
 }
 
 #[tauri::command]
-fn scan_file(path: String, mode: String, state: State<AppState>) -> Result<String, String> {
+fn scan_file(path: String, mode: String, segments: Option<u8>, deep_scan: Option<bool>, state: State<AppState>) -> Result<String, String> {
     let engine = state.engine.lock().map_err(|e| e.to_string())?;
+    let n_segments = segments.unwrap_or(8).clamp(2, 64);
     let scan_mode = match mode.as_str() {
-        "segmented" => lumen_engine::types::ScanMode::Segmented(8),
+        "segmented" => lumen_engine::types::ScanMode::Segmented(n_segments),
         _ => lumen_engine::types::ScanMode::Quick,
     };
-    let result = engine.scan_with_mode(std::path::Path::new(&path), scan_mode)?;
+    let mut result = engine.scan_with_mode(std::path::Path::new(&path), scan_mode)?;
+    // ponytail: strip children when deep_scan=false instead of threading flag through entire scanner
+    if !deep_scan.unwrap_or(true) {
+        for seg in &mut result.segments {
+            seg.result.children.clear();
+        }
+        result.combined.children.clear();
+    }
     serde_json::to_string_pretty(&result).map_err(|e| e.to_string())
 }
 
@@ -98,10 +106,30 @@ fn fetch_signatures(url: String, state: State<AppState>) -> Result<String, Strin
     Ok(format!("Imported {} signatures", count))
 }
 
+fn collect_files_recursive(dir: &std::path::Path, prefix: &str, files: &mut Vec<String>) {
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let rel_name = if prefix.is_empty() {
+                entry.file_name().to_string_lossy().to_string()
+            } else {
+                format!("{}/{}", prefix, entry.file_name().to_string_lossy())
+            };
+            if path.is_file() {
+                files.push(rel_name);
+            } else if path.is_dir() {
+                collect_files_recursive(&path, &rel_name, files);
+            }
+        }
+    }
+}
+
 #[tauri::command]
-fn list_folder_files(path: String) -> Result<String, String> {
+fn list_folder_files(path: String, recursive: Option<bool>) -> Result<String, String> {
     let mut files = Vec::new();
-    if let Ok(entries) = std::fs::read_dir(&path) {
+    if recursive.unwrap_or(false) {
+        collect_files_recursive(std::path::Path::new(&path), "", &mut files);
+    } else if let Ok(entries) = std::fs::read_dir(&path) {
         for entry in entries.flatten() {
             if entry.path().is_file() {
                 if let Some(name) = entry.file_name().to_str() {

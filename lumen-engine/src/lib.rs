@@ -16,6 +16,9 @@ pub struct Engine {
 impl Engine {
     /// Open (or create) the signature DB at the given path
     pub fn new(db_path: &str) -> Result<Self, String> {
+        // Clean up any stale temp extraction dirs from previous runs
+        crate::scanner::cleanup_temp_dirs();
+
         let conn = db::open_db(db_path).map_err(|e| e.to_string())?;
         db::ensure_schema(&conn).map_err(|e| e.to_string())?;
         Ok(Self { conn })

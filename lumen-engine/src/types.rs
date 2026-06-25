@@ -25,6 +25,12 @@ pub struct ScanResult {
     pub offset: u64,
     /// How sure we are (0.0–1.0)
     pub confidence: f32,
+    /// True if container has password protection
+    pub has_password: bool,
+    /// Hex bytes of leading header before magic (if any)
+    pub header_hex: Option<String>,
+    /// Name of inner file (from temp extract)
+    pub inner_name: Option<String>,
     /// Embedded files inside a container
     pub children: Vec<ScanResult>,
 }
@@ -38,6 +44,9 @@ impl ScanResult {
             compression: None,
             offset: 0,
             confidence: 0.0,
+            has_password: false,
+            header_hex: None,
+            inner_name: None,
             children: vec![],
         }
     }
@@ -56,7 +65,7 @@ pub struct Signature {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MagicPattern {
     pub offset: i64,
-    pub hex_bytes: String, // e.g. "504B0304"
+    pub hex_bytes: String,
     pub mask: Option<String>,
     pub endianness: String,
 }

@@ -94,16 +94,25 @@ async function pickFolder() {
 // ============================================================
 // SCAN
 // ============================================================
-async function doScan(filePath, mode) {
+async function doScan(filePath, mode, segmentCount) {
   lastFilePath = filePath;
   $('#progress-wrap').style.display = 'flex';
   $('#progress-fill').style.width = '20%';
   $('#progress-text').textContent = 'reading...';
   $('#segment-map').style.display = 'none';
   $('#btn-scan-inspect-hex').style.display = 'none';
+  $('#result-tree').innerHTML = '<span class="muted">Scanning...</span>';
 
   try {
-    const raw = await invokeTauri('scan_file', { path: filePath, mode });
+    if (!filePath) {
+      $('#result-tree').innerHTML = '<span class="keyword">No file path — dialog cancelled</span>';
+      $('#progress-wrap').style.display = 'none';
+      return;
+    }
+    $('#progress-text').textContent = 'calling engine...';
+    const nSegs = parseInt(segmentCount) || 8;
+    const deep = $('#deep-scan').checked;
+    const raw = await invokeTauri('scan_file', { path: filePath, mode, segments: nSegs, deepScan: deep });
     if (!raw) {
       $('#result-tree').innerHTML = '<span class="muted">Engine unavailable. Is Tauri running?</span>';
       $('#progress-wrap').style.display = 'none';
@@ -160,15 +169,55 @@ function updateScanUI(data, filePath) {
 function renderResultTree(result, container, depth = 0) {
   if (!result) return;
   const div = document.createElement('div');
-  div.className = 'result-item' + (depth > 0 ? ' child' : '');
-  const icon = result.file_type === 'Unknown' ? '?' : '📦';
-  const indent = depth > 0 ? '├─ ' : '';
-  let html = `<span class="result-type">${indent}${icon} ${escHtml(result.file_type)}</span>`;
-  if (result.mime) html += ` <span class="result-mime">${escHtml(result.mime)}</span>`;
-  if (result.extension) html += ` <span class="result-type"> (${escHtml(result.extension)})</span>`;
-  if (result.compression) html += ` <span class="result-comp"> | ${escHtml(result.compression)}</span>`;
-  html += ` <span class="muted" style="font-size:var(--text-xs)">@0x${result.offset.toString(16).toUpperCase()}</span>`;
-  if (result.confidence > 0) html += ` <span class="muted" style="font-size:var(--text-xs)">${(result.confidence*100).toFixed(0)}%</span>`;
+  div.className = 'result-item';
+  if (depth > 0) div.style.paddingLeft = (depth * 18) + 'px';
+
+  // Choose icon based on type
+  let iconHtml;
+  if (result.file_type === 'Folder') {
+    iconHtml = '<i class="fas fa-folder-open" style="color:var(--accent-4);"></i>';
+  } else if (result.file_type === 'Unknown') {
+    iconHtml = '<i class="fas fa-question-circle"></i>';
+  } else if (result.mime && result.mime.startsWith('image/')) {
+    iconHtml = '<i class="fas fa-file-image"></i>';
+  } else if (result.mime && result.mime.startsWith('audio/')) {
+    iconHtml = '<i class="fas fa-file-audio"></i>';
+  } else if (result.mime && result.mime.startsWith('video/')) {
+    iconHtml = '<i class="fas fa-file-video"></i>';
+  } else if (result.extension === '.zip' || result.extension === '.rar' || result.extension === '.7z' || result.extension === '.tar' || result.extension === '.gz') {
+    iconHtml = '<i class="fas fa-file-archive"></i>';
+  } else if (result.mime && (result.mime.startsWith('text/') || result.mime === 'application/json' || result.mime === 'application/xml')) {
+    iconHtml = '<i class="fas fa-file-code"></i>';
+  } else if (result.extension === '.exe' || result.extension === '.dll' || result.file_type.includes('ELF') || result.file_type.includes('Mach-O')) {
+    iconHtml = '<i class="fas fa-file-code"></i>';
+  } else {
+    iconHtml = '<i class="fas fa-file"></i>';
+  }
+
+  let html;
+  if (result.file_type === 'Folder') {
+    html = `<span class="result-type"><i class="fas fa-chevron-right" style="font-size:0.5rem;color:var(--muted);margin-right:2px;"></i> ${iconHtml} ${escHtml(result.inner_name || '')}/</span>`;
+  } else {
+    html = `<span class="result-type">${iconHtml} ${escHtml(result.file_type)}</span>`;
+    if (result.inner_name) {
+      html += ` <span class="result-mime">(${escHtml(result.inner_name)})</span>`;
+    }
+    if (result.has_password) {
+      html += ` <i class="fas fa-lock" style="color:var(--accent-1);font-size:var(--text-xs);" title="Password protected"></i>`;
+    } else if (result.extension === '.zip' || result.file_type.includes('ZIP') || result.file_type.includes('archive')) {
+      html += ` <i class="fas fa-unlock" style="color:var(--accent-3);font-size:var(--text-xs);" title="Not encrypted"></i>`;
+    }
+    if (result.mime) html += ` <span class="result-mime">${escHtml(result.mime)}</span>`;
+    if (result.extension) html += ` <span class="result-type"> (${escHtml(result.extension)})</span>`;
+    if (result.compression) html += ` <span class="result-comp"> | ${escHtml(result.compression)}</span>`;
+    html += ` <span class="muted" style="font-size:var(--text-xs)">@0x${result.offset.toString(16).toUpperCase()}</span>`;
+    if (result.confidence > 0) html += ` <span class="muted" style="font-size:var(--text-xs)">${(result.confidence*100).toFixed(0)}%</span>`;
+    if (result.header_hex) {
+      const truncated = result.header_hex.length > 32 ? result.header_hex.substring(0, 32) + '…' : result.header_hex;
+      html += `<br><span class="muted" style="font-size:0.55rem;"><i class="fas fa-file-signature"></i> Header: ${truncated}</span>`;
+    }
+  }
+
   div.innerHTML = html;
   container.appendChild(div);
 
@@ -216,14 +265,16 @@ $('#btn-select-file')?.addEventListener('click', async () => {
   const filePath = await pickFile();
   if (!filePath) return;
   const mode = $('#scan-mode').value === 'segmented' ? 'segmented' : 'quick';
-  doScan(filePath, mode);
+  const segs = $('#scan-segments').value;
+  doScan(filePath, mode, segs);
 });
 
 $('#btn-rescan')?.addEventListener('click', () => {
   const lastFile = $('#btn-rescan').dataset.lastFile;
   if (lastFile) {
     const mode = $('#scan-mode').value === 'segmented' ? 'segmented' : 'quick';
-    doScan(lastFile, mode);
+    const segs = $('#scan-segments').value;
+    doScan(lastFile, mode, segs);
   }
 });
 
@@ -248,7 +299,8 @@ scanTab?.addEventListener('drop', async (e) => {
   const fpath = file.path;
   if (fpath) {
     const mode = $('#scan-mode').value === 'segmented' ? 'segmented' : 'quick';
-    doScan(fpath, mode);
+    const segs = $('#scan-segments').value;
+    doScan(fpath, mode, segs);
   } else {
     $('#result-tree').innerHTML = '<span class="keyword">Drag-drop needs full path. Use [Select File] instead.</span>';
   }
@@ -298,7 +350,16 @@ async function loadHexView(highlightOffset) {
   hexFull.innerHTML = '<span class="muted">Loading hex...</span>';
 
   try {
-    const hex = await invokeTauri('read_hex', { path: lastFilePath, offset: 0, len: 512 });
+    // Calculate read window aligned to 16-byte boundary
+    const viewLen = 512;
+    let readStart = 0;
+    if (highlightOffset !== undefined && highlightOffset !== null) {
+      readStart = Math.floor(highlightOffset / 16) * 16;
+      readStart = Math.max(0, readStart - Math.floor(viewLen / 4)); // some context before
+      readStart = Math.floor(readStart / 16) * 16;
+    }
+
+    const hex = await invokeTauri('read_hex', { path: lastFilePath, offset: readStart, len: viewLen });
     if (!hex) { hexFull.innerHTML = '<span class="muted">Failed to read file</span>'; return; }
 
     const bytes = hexToBytes(hex);
@@ -306,13 +367,14 @@ async function loadHexView(highlightOffset) {
 
     for (let r = 0; r < bytes.length; r += 16) {
       const rowBytes = bytes.slice(r, r + 16);
-      const offStr = r.toString(16).padStart(6, '0').toUpperCase();
-      html += `<div class="hex-row" data-offset="${r}">`;
+      const fileOffset = readStart + r;
+      const offStr = fileOffset.toString(16).padStart(6, '0').toUpperCase();
+      html += `<div class="hex-row" data-offset="${fileOffset}">`;
       html += `<span class="hex-offset">${offStr}</span>`;
 
       html += '<span class="hex-bytes">';
       for (let b = 0; b < 16; b++) {
-        const byteOff = r + b;
+        const byteOff = fileOffset + b;
         const byteVal = rowBytes[b];
         if (byteVal === undefined) {
           html += '<span class="hex-byte empty">  </span>';
@@ -348,7 +410,22 @@ async function loadHexView(highlightOffset) {
       html += '</span></div>';
     }
     html += '</div>';
+    html += `<div class="hex-nav" style="display:flex;gap:8px;margin-top:8px;font-size:var(--text-xs);align-items:center;border-top:1px solid var(--border-subtle);padding-top:6px;">
+      <button class="btn" id="hex-prev-page" style="width:auto;padding:2px 10px;"><i class="fas fa-chevron-left"></i> Prev</button>
+      <span class="muted">@ 0x${readStart.toString(16).padStart(6, '0').toUpperCase()}</span>
+      <button class="btn" id="hex-next-page" style="width:auto;padding:2px 10px;">Next <i class="fas fa-chevron-right"></i></button>
+    </div>`;
     hexFull.innerHTML = html;
+
+    // Wire up pagination
+    const pageSize = viewLen;
+    $('#hex-prev-page')?.addEventListener('click', () => {
+      const newOff = Math.max(0, readStart - pageSize);
+      loadHexView(newOff);
+    });
+    $('#hex-next-page')?.addEventListener('click', () => {
+      loadHexView(readStart + pageSize);
+    });
   } catch (err) {
     hexFull.innerHTML = `<span class="keyword">Error: ${escHtml(err)}</span>`;
   }
@@ -434,7 +511,8 @@ $('#btn-select-folder')?.addEventListener('click', async () => {
   batchFiles = [];
 
   try {
-    const entries = await invokeTauri('list_folder_files', { path: folderPath });
+    const recurse = $('#recursive-toggle').checked;
+    const entries = await invokeTauri('list_folder_files', { path: folderPath, recursive: recurse });
     if (entries) {
       batchFiles = JSON.parse(entries);
       $('#batch-count').textContent = String(batchFiles.length);
@@ -464,7 +542,6 @@ $('#btn-select-folder')?.addEventListener('click', async () => {
 });
 
 function selectBatchItem(index, el) {
-  // Unhighlight previous
   document.querySelectorAll('.batch-item.selected').forEach(e => e.classList.remove('selected'));
   el.classList.add('selected');
   batchSelectedFile = index;
@@ -478,20 +555,37 @@ function selectBatchItem(index, el) {
   // Show the inspect button area
   $('#inspect-hex-btn-wrap').style.display = 'block';
 
-  // Enable button only if we have a scan result for this file
+  // Enable button as long as scan produced a result
   const result = batchResults[f];
-  if (result && result.file_type !== 'Unknown') {
-    $('#btn-inspect-hex').disabled = false;
-  } else {
-    $('#btn-inspect-hex').disabled = true;
-  }
+  $('#btn-inspect-hex').disabled = !result;
 
   // Store full path for hex inspection
   $('#btn-inspect-hex').dataset.targetPath = fullPath;
+
+  // Open in Scan button: show for container files
+  const isContainer = result && (result.file_type.toLowerCase().includes('zip')
+    || result.file_type.toLowerCase().includes('rar')
+    || result.file_type.toLowerCase().includes('7z')
+    || result.file_type.toLowerCase().includes('tar')
+    || result.file_type.toLowerCase().includes('cab'));
+  if (isContainer && result && !result.has_password) {
+    $('#btn-open-in-scan').disabled = false;
+  } else {
+    $('#btn-open-in-scan').disabled = true;
+  }
+  $('#btn-open-in-scan').dataset.targetPath = fullPath;
 }
 
 $('#batch-select-all')?.addEventListener('change', function () {
   $$('.batch-item input[type=checkbox]').forEach(cb => { cb.checked = this.checked; });
+});
+
+$('#btn-open-in-scan')?.addEventListener('click', async () => {
+  const path = $('#btn-open-in-scan').dataset.targetPath;
+  if (!path) return;
+  // Switch to scan tab and scan the file
+  document.querySelector('.tab[data-tab="scan"]')?.click();
+  await doScan(path, 'quick', '8');
 });
 
 $('#btn-inspect-hex')?.addEventListener('click', async () => {
@@ -544,8 +638,21 @@ $('#btn-run-batch')?.addEventListener('click', async () => {
 
         batchResults[batchFiles[i]] = data.combined;
 
-        if (batchSelectedFile === i && type !== 'Unknown') {
+        // Show container icon
+        if (type.toLowerCase().includes('zip') || type.toLowerCase().includes('rar') || type.toLowerCase().includes('7z') || type.toLowerCase().includes('tar')) {
+          const stEl = items[i]?.querySelector('.batch-status');
+          if (stEl) stEl.innerHTML = stEl.textContent + ' <i class="fas fa-file-archive"></i>';
+        }
+
+        if (batchSelectedFile === i) {
           $('#btn-inspect-hex').disabled = false;
+          // Enable Open in Scan for containers
+          const isContainer = type.toLowerCase().includes('zip')
+            || type.toLowerCase().includes('rar') || type.toLowerCase().includes('7z')
+            || type.toLowerCase().includes('tar') || type.toLowerCase().includes('cab');
+          if (isContainer && !data.combined.has_password) {
+            $('#btn-open-in-scan').disabled = false;
+          }
         }
       }
     } catch {

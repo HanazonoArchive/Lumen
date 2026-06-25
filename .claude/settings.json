@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo clean *)",
+      "Bash(awk -F',' 'NR>1{print $4}' lumen-engine/src/sigs.csv)",
+      "Bash(awk -F',' 'NR>1 && $1 ~ /,/' lumen-engine/src/sigs.csv)"
+    ]
+  }
+}

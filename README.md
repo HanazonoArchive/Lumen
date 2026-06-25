@@ -1,187 +1,129 @@
 # Lumen — RE File Identifier
 
-Reverse engineering tool that identifies file types by scanning magic bytes/signatures. Takes any file (unknown/weird extensions), reads hex bytes, matches against a signature database (SQLite), and reports file type, compression, and container contents.
+Reverse engineering tool that identifies file types by scanning magic bytes/signatures. Takes any file, reads hex bytes, matches against a signature database (SQLite, 700+ sigs from GCK table), and reports file type with container extraction and hex inspection.
 
 Built by [HanazonoArchive](https://github.com/HanazonoArchive).
 
 ---
 
-## Features
+## Quick Commands
 
-- **Single file scan** — drop or select any file, get instant type identification
-- **Segmented scan** — large files divided into adaptive segments (4/8/16), scanned with overlap to catch multi-type files
-- **Batch scan** — scan entire folders with checkboxes, batch progress, identified counts
-- **Hex inspector** — full hex view with signature highlighting, signature sidebar for quick navigation
-- **Container detection** — detects embedded files inside ZIP, RAR, 7z, and other archives
-- **Plain text detection** — identifies JSON, XML, HTML, scripts, and plain text files without magic signatures
-- **Signature database** — SQLite-based, 200+ built-in signatures, rebuildable, extensible via web import
-- **Tauri + Rust** — fast native GUI, safe binary parsing, cross-platform
-
----
+| Action | Command |
+|---|---|
+| **Seed signature DB** | `cargo run -p lumen-engine --bin lumen-seed` |
+| **Run GUI (dev)** | `npx @tauri-apps/cli dev` |
+| **Run GUI (dev, MINGW64)** | `cd lumen-gui && export PATH="$HOME/.cargo/bin:$PATH" && npx @tauri-apps/cli dev` |
+| **Build MSI** | `cargo tauri build` |
+| **Check engine** | `cargo check -p lumen-engine` |
+| **Check GUI** | `cargo check -p lumen-gui` |
+| **Run tests** | `cargo test -p lumen-engine` |
+| **Rebuild from scratch** | `cargo clean && cargo build --workspace` |
+| **Fetch sigs from web** | `cargo run -p lumen-engine --bin lumen-fetch` |
 
 ## Requirements
 
 - [Rust](https://rustup.rs/) (1.70+)
 - [Node.js](https://nodejs.org/) (18+)
 - npm
+- WebView2 runtime (pre-installed on Windows 10+)
 
-## Quick Start
+## 7-Zip for RAR/CAB/ISO extraction
 
-```bash
-# 1. Clone
-git clone https://github.com/HanazonoArchive/lumen.git
-cd lumen
+Lumen uses `7z.exe` as an external backend for formats without native Rust support (RAR, CAB, ISO, ARJ, etc.).
 
-# 2. Seed signature database
-cargo run -p lumen-engine --bin lumen-seed -- signatures.db
-
-# 3. Run GUI
-cd lumen-gui
-npm install
-npx tauri dev
-```
-
-### From Git Bash / MINGW64 (cargo PATH fix)
-
-```bash
-cd "c:/path/to/lumen/lumen-gui"
-export PATH="$HOME/.cargo/bin:$PATH"
-npx tauri dev
-```
-
-### From PowerShell
-
-```powershell
-# First time: add cargo to PATH permanently
-[Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget::User]) + ";$env:USERPROFILE\.cargo\bin", [EnvironmentVariableTarget::User])
-# Restart PowerShell, then:
-cd C:\path\to\lumen\lumen-gui
-npx tauri dev
-```
-
-### Build for production
+**Download script** (run once before build):
 
 ```bash
 cd lumen-gui
-npx tauri build
+powershell -ExecutionPolicy Bypass -File download-7z.ps1
 ```
 
----
+The script copies from your local 7-Zip installation, or downloads the full package from NuGet. During `cargo tauri build`, it runs automatically and bundles `7z.exe` into the MSI.
+
+At runtime, `find_7z()` checks (in order):
+1. Same dir as `lumen.exe` (bundled deployment)
+2. `resources/7z.exe` next to `lumen.exe` (MSI install)
+3. Walking up from binary to find `lumen-gui/resources/` (dev mode)
+4. `PATH`
+5. `C:\Program Files\7-Zip\`
 
 ## Signature Database
 
-Lumen ships with **221 built-in file signatures** across these categories:
+Lumen ships with **700+ signatures** from the [Gary Kessler File Signature Table](https://www.garykessler.net/library/file_sigs.html), stored as `lumen-engine/src/sigs.csv`.
 
-| Category | # of sigs |
-|---|---|
-| Archives / Compression | 28 |
-| Images / Raw photos | 31 |
-| Executables / Binaries | 17 |
-| Documents / Markup | 18 |
-| Audio | 19 |
-| Video | 20 |
-| Fonts | 7 |
-| Disk images / Filesystems | 13 |
-| Databases | 10 |
-| VM / Bytecode | 6 |
-| Certificates / Crypto | 9 |
-| Network / Capture | 3 |
-| Android / Mobile | 2 |
-| CAD / 3D | 8 |
-| Game ROMs / Console | 6 |
-| Windows system | 4 |
-| Packages / Installers | 3 |
-| GIS / Geospatial | 2 |
-| Science / Engineering | 3 |
-| Scripts | 4 |
+The CSV is embedded at compile time via `include_str!()` and parsed by `seed_sigs()` in `db.rs` — no code generation needed when the CSV changes.
 
-### Rebuild seed DB
-
-Click **Rebuild Seed DB** in the _db tab, or run:
+### Re-seed
 
 ```bash
-cargo run -p lumen-engine --bin lumen-seed -- signatures.db
+cargo run -p lumen-engine --bin lumen-seed
 ```
+
+Or click **Rebuild Seed DB** in the _db tab.
 
 ### Import from web
 
-Set a URL in the _db tab's **Remote URL** field pointing to a JSON array of signatures:
+Set a URL in the _db tab's **Remote URL** field pointing to JSON:
 
 ```json
 [
-  {
-    "name": "My Format",
-    "mime": "application/x-my-format",
-    "ext": ".myf",
-    "offset": 0,
-    "hex": "ABCD1234"
-  }
+  { "name": "My Format", "mime": "application/x-my", "ext": ".myf", "offset": 0, "hex": "ABCD1234" }
 ]
 ```
 
 Then click **Update from Web**.
 
-### Scrape more signatures
+## Extraction Pipeline
 
-Lumen includes a fetcher tool to scrape public sources:
-
-```bash
-# Generate a JSON file from embedded + DIE-engine sources
-cargo run -p lumen-engine --bin lumen-fetch -- sigs.json
-```
-
-**External sources for file signatures:**
-
-| Source | URL | Format |
+| Format | Extractor | Type |
 |---|---|---|
-| DIE-engine | https://github.com/horsicq/DIE-engine | JSON (.sig) |
-| Gary Kessler | https://www.garykessler.net/library/file_sigs.html | HTML table |
-| Wikipedia | https://en.wikipedia.org/wiki/List_of_file_signatures | Wiki table |
-| FreeDesktop | https://gitlab.freedesktop.org/xdg/shared-mime-info | XML |
-| `file` command | `file -m /usr/share/misc/magic` (on Linux) | magic(5) format |
+| **ZIP** (+ APK, EPUB, DOCX, JAR, iWork) | `zip` crate | Native Rust |
+| **TAR** | `tar` crate | Native Rust |
+| **7z** | `sevenz-rust` crate | Native Rust |
+| **RAR, CAB, ISO, ARJ, etc.** | `7z.exe` backend | External (7-Zip) |
 
-To add your own, modify `lumen-engine/src/db.rs` → `seed_sigs()` function and re-seed.
-
----
+ZIP-based formats sharing `504B0304` magic are **disambiguated by content** — the scanner peeks inside to identify APK, EPUB, DOCX, JAR, etc. by entry names.
 
 ## Project Structure
 
 ```
 lumen/
-├── Cargo.toml                 # workspace root
-├── signatures.db              # SQLite signature database (generated)
+├── Cargo.toml                  # workspace root
+├── signatures.db               # SQLite DB (generated by lumen-seed)
 ├── .gitignore
 ├── README.md
-├── lumen-engine/              # core engine lib (no Tauri dependency)
-│   ├── src/
-│   │   ├── lib.rs             # Engine API
-│   │   ├── types.rs           # ScanResult, Signature, etc.
-│   │   ├── scanner.rs         # quick scan + segmented scan + text detection
-│   │   └── db.rs              # SQLite schema, queries, seed data
-│   └── src/bin/
-│       ├── seed_db.rs         # seed DB generator
-│       ├── test_scan.rs       # engine smoke test
-│       └── fetch_sigs.rs      # web signature fetcher
-├── lumen-gui/                 # Tauri v2 GUI
-│   ├── src/
-│   │   ├── index.html         # 4-tab UI (_scan/_batch/_hex/_db)
-│   │   ├── styles.css         # dark editor theme
-│   │   └── app.js             # UI logic
-│   ├── src-tauri/
-│   │   └── src/main.rs        # Tauri commands (file IO, dialogs, DB)
-│   └── package.json
+├── lumen-engine/               # core library (no Tauri dep)
+│   ├── Cargo.toml
+│   └── src/
+│       ├── lib.rs              # Engine API
+│       ├── types.rs            # ScanResult, Signature, ScanMode
+│       ├── scanner.rs          # scanning, extraction, disambiguation
+│       ├── db.rs               # SQLite schema, queries, CSV seed
+│       ├── sigs.csv            # GCK File Signature Table (615 entries)
+│       └── bin/
+│           ├── seed_db.rs      # re-seed signatures.db
+│           ├── test_scan.rs    # CLI smoke test
+│           └── fetch_sigs.rs   # web signature fetcher
+├── lumen-gui/                  # Tauri v2 GUI
+│   ├── download-7z.ps1         # 7z.exe download script
+│   ├── resources/              # 7z.exe + 7z.dll (gitignored)
+│   └── src/
+│       ├── index.html          # 4-tab UI (_scan / _batch / _hex / _db)
+│       ├── styles.css          # dark editor theme
+│       └── app.js              # UI logic
+│   └── src-tauri/
+│       ├── build.rs            # placeholder for 7z resource
+│       ├── tauri.conf.json     # Tauri config, bundling
+│       └── src/main.rs         # Tauri commands
 ```
-
----
 
 ## Tech Stack
 
-- **Rust engine** — binary parsing, SQLite via rusqlite, buffered IO
+- **Rust engine** — binary parsing, SQLite via rusqlite, ZIP/tar/7z extraction
 - **Tauri v2** — native window, file dialogs via rfd, HTTP via ureq
-- **HTML/CSS/JS** — vanilla frontend (no framework), dark code editor theme
+- **HTML/CSS/JS** — vanilla frontend, dark code editor theme
 - **SQLite** — portable signature database, bundled
-
----
+- **7-Zip** — optional external backend for RAR/CAB/ISO/ARJ
 
 ## License
 
