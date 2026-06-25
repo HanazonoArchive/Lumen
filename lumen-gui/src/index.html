@@ -32,6 +32,7 @@
     <a href="#" class="tab" data-tab="batch"><i class="fas fa-folder-tree"></i>_batch</a>
     <a href="#" class="tab" data-tab="hex"><i class="fa-solid fa-hashtag"></i>_hex</a>
     <a href="#" class="tab" data-tab="db"><i class="fas fa-database"></i>_db</a>
+    <a href="#" class="tab" data-tab="cli"><i class="fa-solid fa-terminal"></i>_cli</a>
   </nav>
 </header>
 
@@ -242,6 +243,19 @@
       <div class="db-detail-box" id="db-detail-box">
         <span class="muted">Click a signature to see details</span>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- _cli Tab -->
+<div class="panel-container tab-content" id="tab-cli" style="display:none;">
+  <div class="panel panel-full terminal">
+    <div class="panel-header"><span class="comment-line">// Terminal</span></div>
+    <div class="panel-body terminal-output" id="cli-output">
+    </div>
+    <div class="terminal-input-row">
+      <span class="prompt">$</span>
+      <input type="text" id="cli-input" placeholder="type a command..." spellcheck="false" autofocus>
     </div>
   </div>
 </div>

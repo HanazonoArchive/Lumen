@@ -163,7 +163,7 @@ a { color: inherit; text-decoration: none; }
 .string { color: var(--syntax-string); }
 .comment { color: var(--syntax-comment); font-style: italic; }
 .function-name { color: var(--syntax-function); }
-.comment-line { color: var(--syntax-comment); font-size: 0.6rem; font-style: italic; }
+.comment-line { color: var(--syntax-comment); font-size: 0.7rem; font-style: italic; }
 .prompt { color: var(--syntax-string); font-weight: 600; }
 .muted { color: var(--muted); }
 
@@ -173,8 +173,8 @@ a { color: inherit; text-decoration: none; }
 
 /* file meta */
 .keyval { display: flex; gap: var(--space-1); line-height: 1.4; }
-.key { color: var(--muted); font-size: 0.6rem; min-width: 4em; }
-.val { color: var(--text); font-weight: 500; font-size: 0.6rem; }
+.key { color: var(--muted); font-size: 0.7rem; min-width: 4em; }
+.val { color: var(--text); font-weight: 500; font-size: 0.7rem; }
 
 /* hex preview */
 .hex-preview {
@@ -205,13 +205,17 @@ a { color: inherit; text-decoration: none; }
 /* result tree */
 .result-tree { margin-bottom: var(--space-2); }
 .result-tree .result-item {
-  padding: 1px 0; font-size: 0.6rem;
+  padding: 1px 0; font-size: 0.7rem;
   border-bottom: 1px solid var(--border-subtle);
 }
 .result-tree .result-item.child { padding-left: var(--space-4); }
 .result-tree .result-type { color: var(--accent-2); }
 .result-tree .result-mime { color: var(--muted); font-size: var(--text-xs); }
 .result-tree .result-comp { color: var(--accent-4); font-size: var(--text-xs); }
+
+.muted {
+  font-size: 0.7rem;
+}
 
 /* segment map */
 .segment-blocks {
@@ -220,7 +224,7 @@ a { color: inherit; text-decoration: none; }
 }
 .segment-block {
   flex: 1; display: flex; align-items: center; justify-content: center;
-  font-size: 0.6rem; font-weight: 600; color: var(--bg);
+  font-size: 0.7rem; font-weight: 600; color: var(--bg);
 }
 .segment-block.unknown { background: var(--muted); }
 .segment-block.known { background: var(--accent-2); }
@@ -242,7 +246,7 @@ a { color: inherit; text-decoration: none; }
 /* settings */
 .settings-form { display: flex; flex-direction: column; gap: var(--space-2); }
 .setting { display: flex; flex-direction: column; gap: var(--space-1); }
-.setting-label { font-size: 0.6rem; color: var(--muted); }
+.setting-label { font-size: 0.7rem; color: var(--muted); }
 .setting select {
   background: var(--panel-strong);
   border: 1px solid var(--border-default);
@@ -282,7 +286,7 @@ a { color: inherit; text-decoration: none; }
   border-color: var(--accent-2); outline: none;
   box-shadow: 0 0 0 1px rgba(74,217,255,0.15);
 }
-.setting-check { flex-direction: row; align-items: center; gap: var(--space-1); font-size: 0.6rem; }
+.setting-check { flex-direction: row; align-items: center; gap: var(--space-1); font-size: 0.7rem; }
 .setting-check input[type="checkbox"] { accent-color: var(--accent-2); margin: 0; }
 
 /* buttons */
@@ -310,8 +314,8 @@ a { color: inherit; text-decoration: none; }
 .batch-item:hover { background: rgba(74,217,255,0.04); }
 .batch-item.selected { background: rgba(255,183,197,0.12); border-left: 2px solid var(--accent-sakura); }
 .batch-item input { accent-color: var(--accent-2); flex-shrink: 0; margin: 0; }
-.batch-item .batch-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.6rem; }
-.batch-item .batch-status { font-size: 0.6rem; white-space: nowrap; }
+.batch-item .batch-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.7rem; }
+.batch-item .batch-status { font-size: 0.7rem; white-space: nowrap; }
 .batch-item .batch-status.ok { color: var(--accent-3); }
 .batch-item .batch-status.fail { color: var(--accent-1); }
 .batch-item .batch-status.wait { color: var(--muted); }
@@ -336,14 +340,14 @@ a { color: inherit; text-decoration: none; }
   border: 1px solid rgba(74,217,255,0.15);
   border-radius: 2px;
   padding: 1px 4px;
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   margin: 1px;
   color: var(--accent-2);
   letter-spacing: 0.03em;
 }
 
 /* signature list */
-.sig-list, .db-list { display: flex; flex-direction: column; gap: 1px; font-size: 0.6rem; }
+.sig-list, .db-list { display: flex; flex-direction: column; gap: 1px; font-size: 0.7rem; }
 .sig-item, .db-item {
   padding: 1px var(--space-2);
   cursor: pointer; border-radius: var(--radius-xs);
@@ -400,7 +404,46 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ===========================================================
-   9. RESPONSIVE
+   9. CLI TERMINAL TAB
+   =========================================================== */
+#tab-cli.panel-container { grid-template-columns: 1fr; }
+#tab-cli .terminal { display: flex; flex-direction: column; min-height: 0; }
+#tab-cli .terminal-output {
+  flex: 1; overflow-y: auto;
+  background: var(--bg);
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  padding: var(--space-3);
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+.cli-line { padding: 0; color: var(--text); word-break: break-all; }
+.cli-line.cli-error { color: var(--accent-1); }
+.cli-line.cli-success { color: var(--accent-3); }
+.cli-line.cli-warn { color: var(--accent-4); }
+.cli-line.cli-info { color: var(--accent-2); }
+.cli-line.muted { color: var(--muted); }
+.terminal-input-row {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--panel);
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+.terminal-input-row .prompt {
+  color: var(--syntax-string); font-weight: 600;
+  font-size: var(--text-sm); flex-shrink: 0;
+}
+.terminal-input-row input {
+  flex: 1;
+  background: transparent; border: none;
+  color: var(--text);
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  outline: none;
+}
+.terminal-input-row input::placeholder { color: var(--muted); opacity: 0.5; }
+
+/* ===========================================================
+   10. RESPONSIVE
    =========================================================== */
 @media (max-width: 800px) {
   .panel-container { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }

@@ -1,8 +1,0 @@
-feat: auto-seed DB on first launch, fix DB path for MSI install, add npm scripts
-
-- Engine::new() auto-seeds if signatures table empty (no manual lumen-seed needed)
-- resolve_db_path() uses %LOCALAPPDATA%/Lumen/signatures.db as writable path
-  for MSI installs, with backward-compatible exe-dir fallback for dev
-- Add npm run tauri:dev and npm run tauri:build scripts
-
-Co-Authored-By: Claude noreply@anthropic.com

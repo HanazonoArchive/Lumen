@@ -13,3 +13,6 @@ lumen-sigs.json
 .idea/
 *.log
 dist/
+.agents
+.claude
+.serena

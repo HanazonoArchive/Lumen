@@ -21,6 +21,7 @@ tabs.forEach(tab => {
       target.style.display = 'grid';
       if (tab.dataset.tab === 'db') refreshDbView();
       if (tab.dataset.tab === 'hex' && lastScanResult) renderHexTab();
+      if (tab.dataset.tab === 'cli') { $('#cli-input')?.focus(); initCli(); }
     }
   });
 });
@@ -110,13 +111,20 @@ async function doScan(filePath, mode, segmentCount) {
       return;
     }
     $('#progress-text').textContent = 'calling engine...';
+    $('#loading-overlay').style.display = 'flex';
+    $('#loading-overlay .loading-spinner span').textContent = 'Scanning...';
     const nSegs = parseInt(segmentCount) || 8;
     const deep = $('#deep-scan').checked;
-    const raw = await invokeTauri('scan_file', { path: filePath, mode, segments: nSegs, deepScan: deep });
-    if (!raw) {
-      $('#result-tree').innerHTML = '<span class="muted">Engine unavailable. Is Tauri running?</span>';
-      $('#progress-wrap').style.display = 'none';
-      return;
+    let raw;
+    try {
+      raw = await invokeTauri('scan_file', { path: filePath, mode, segments: nSegs, deepScan: deep });
+      if (!raw) {
+        $('#result-tree').innerHTML = '<span class="muted">Engine unavailable. Is Tauri running?</span>';
+        $('#progress-wrap').style.display = 'none';
+        return;
+      }
+    } finally {
+      $('#loading-overlay').style.display = 'none';
     }
     const data = JSON.parse(raw);
     lastScanResult = data;
@@ -784,6 +792,143 @@ $('#hex-go-btn')?.addEventListener('click', () => {
 $('#hex-offset-jump')?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') $('#hex-go-btn').click();
 });
+
+// ============================================================
+// CLI TAB
+// ============================================================
+let cliInited = false;
+
+function initCli() {
+  if (cliInited) return;
+  cliInited = true;
+  cliPrint('Lumen CLI v0.1.2 — embedded terminal', 'cli-info');
+  cliPrint('Type `help` for available commands', 'muted');
+}
+
+function cliPrint(text, className = '') {
+  const el = $('#cli-output');
+  if (!el) return;
+  const div = document.createElement('div');
+  div.className = 'cli-line' + (className ? ' ' + className : '');
+  div.textContent = text;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+  // Trim old lines
+  while (el.children.length > 500) el.removeChild(el.firstChild);
+}
+
+function cliPrintHtml(html) {
+  const el = $('#cli-output');
+  if (!el) return;
+  const div = document.createElement('div');
+  div.className = 'cli-line';
+  div.innerHTML = html;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+  while (el.children.length > 500) el.removeChild(el.firstChild);
+}
+
+const cliCommands = {
+  help() {
+    cliPrint('Available commands:');
+    cliPrint('  help              — show this help');
+    cliPrint('  clear             — clear terminal');
+    cliPrint('  sigs              — list all signatures');
+    cliPrint('  info              — show engine info');
+    cliPrint('  scan <path>       — scan a file (quick mode)');
+    cliPrint('  deep <path>       — deep scan a file');
+    cliPrint('  jump <offset>     — jump to offset in hex view');
+    cliPrint('  echo <text>       — print text');
+  },
+  clear() {
+    const el = $('#cli-output');
+    if (el) el.innerHTML = '';
+    cliInited = false;
+    initCli();
+  },
+  async sigs() {
+    cliPrint('Fetching signatures...', 'muted');
+    try {
+      const raw = await invokeTauri('list_signatures');
+      if (!raw) { cliPrint('Engine unavailable', 'cli-error'); return; }
+      const sigs = JSON.parse(raw);
+      cliPrint(`Loaded ${sigs.length} signatures:`);
+      const maxShow = 30;
+      sigs.slice(0, maxShow).forEach(s => cliPrint(`  ${s.name}  (${s.extension || '—'})`));
+      if (sigs.length > maxShow) cliPrint(`  ... and ${sigs.length - maxShow} more`);
+    } catch (e) { cliPrint(`Error: ${e}`, 'cli-error'); }
+  },
+  info() {
+    cliPrint(`Engine: lumen-engine v0.1.2`);
+    cliPrint(`Signatures loaded: ${allSignatures.length || '?'}`);
+    cliPrint(`Platform: Windows`);
+    cliPrint(`Frontend: Tauri v2 + WebView`);
+  },
+  async scan(path) {
+    if (!path) { cliPrint('Usage: scan <filepath>', 'cli-error'); return; }
+    document.querySelector('.tab[data-tab="scan"]')?.click();
+    await doScan(path, 'quick', '8');
+    if (lastScanResult) {
+      const r = lastScanResult;
+      cliPrint(`File: ${path.split(/[\\/]/).pop()}  (${fmtSize(r.total_size)})`);
+      cliPrint(`Type: ${r.combined.file_type}  (${r.combined.mime || '—'})`);
+      cliPrint(`Confidence: ${(r.combined.confidence * 100).toFixed(0)}%`);
+      if (r.combined.offset > 0) cliPrint(`Match @ 0x${r.combined.offset.toString(16).toUpperCase()}`);
+      cliPrint(`Segments: ${r.segments.length}`);
+    }
+  },
+  async deep(path) {
+    if (!path) { cliPrint('Usage: deep <filepath>', 'cli-error'); return; }
+    cliPrint(`Deep scanning: ${path}`, 'muted');
+    try {
+      const raw = await invokeTauri('scan_file', { path, mode: 'segmented', segments: 16, deepScan: true });
+      if (!raw) { cliPrint('No result', 'cli-error'); return; }
+      const r = JSON.parse(raw);
+      cliPrint(`Segments: ${r.segments.length}  |  Total size: ${fmtSize(r.total_size)}`);
+      r.segments.forEach((s, i) => {
+        cliPrint(`  [${i}] @0x${s.offset.toString(16).toUpperCase()}  ${s.result.file_type}`);
+      });
+      cliPrint(`Combined: ${r.combined.file_type}`);
+    } catch (e) { cliPrint(`Error: ${e}`, 'cli-error'); }
+  },
+  jump(offset) {
+    if (!offset) { cliPrint('Usage: jump <hex_offset>', 'cli-error'); return; }
+    const off = parseInt(offset, 16);
+    if (isNaN(off)) { cliPrint('Invalid offset', 'cli-error'); return; }
+    loadHexView(off);
+    document.querySelector('.tab[data-tab="hex"]')?.click();
+  },
+  echo(...args) { cliPrint(args.join(' ')); },
+};
+
+$('#cli-input')?.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  const input = e.target.value.trim();
+  e.target.value = '';
+  if (!input) return;
+
+  // Echo
+  cliPrintHtml(`<span class="prompt">$</span> ${escHtml(input)}`);
+
+  const parts = input.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+  const cmd = parts[0]?.toLowerCase() || '';
+  const args = parts.slice(1).map(a => a.replace(/^"(.*)"$/, '$1'));
+
+  if (cliCommands[cmd]) {
+    try {
+      const result = cliCommands[cmd](...args);
+      if (result && typeof result.then === 'function') {
+        result.catch(err => cliPrint(`Command error: ${err}`, 'cli-error'));
+      }
+    } catch (err) {
+      cliPrint(`Command error: ${err}`, 'cli-error');
+    }
+  } else {
+    cliPrint(`Unknown command: ${cmd}`, 'cli-error');
+  }
+});
+
+// ============================================================
 
 // Load DB on startup
 (async () => {
