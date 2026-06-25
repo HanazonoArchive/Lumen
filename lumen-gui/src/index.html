@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Lumen</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 0C10 6 6 10 0 12C6 14 10 18 12 24C14 18 18 14 24 12C18 10 14 6 12 0Z' fill='%23ffb7c5'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Google+Sans+Code:ital,wght,MONO@0,300..800,1;1,300..800,1&display=swap');
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.0/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Title Bar -->
+<header class="editor-header">
+  <div class="title-bar">
+    <span class="title-bar-icon">
+      <svg viewBox="0 0 24 24" fill="#ffb7c5" width="16" height="16">
+        <path d="M12 0C10 6 6 10 0 12C6 14 10 18 12 24C14 18 18 14 24 12C18 10 14 6 12 0Z" opacity="0.8"/>
+        <circle cx="12" cy="12" r="2" fill="#ff9eb5"/>
+      </svg>
+    </span>
+    <span class="title-bar-text">Lumen</span>
+  </div>
+  <nav class="tab-bar" id="tab-bar">
+    <a href="#" class="tab active" data-tab="scan"><i class="fas fa-search"></i>_scan</a>
+    <a href="#" class="tab" data-tab="batch"><i class="fas fa-folder-tree"></i>_batch</a>
+    <a href="#" class="tab" data-tab="hex"><i class="fa-solid fa-hashtag"></i>_hex</a>
+    <a href="#" class="tab" data-tab="db"><i class="fas fa-database"></i>_db</a>
+  </nav>
+</header>
+
+<!-- _scan Tab -->
+<div class="panel-container tab-content active" id="tab-scan">
+  <!-- Left: file info + hex preview -->
+  <div class="panel panel-left">
+    <div class="panel-header"><span class="comment-line">// file info</span></div>
+    <div class="panel-body">
+      <div class="file-meta" style="margin-bottom:12px;">
+        <div class="keyval"><span class="key">File:</span><span class="val" id="scan-filename">—</span></div>
+        <div class="keyval"><span class="key">Size:</span><span class="val" id="scan-filesize">—</span></div>
+        <div class="keyval"><span class="key">Sig:</span><span class="val" id="scan-sig">—</span></div>
+      </div>
+      <div class="hex-preview">
+        <div class="hex-row" id="hex-preview-row">
+          <span class="hex-offset">000000</span>
+          <span class="hex-bytes" id="hex-preview-bytes">—</span>
+          <span class="hex-ascii" id="hex-preview-ascii">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Center: results -->
+  <div class="panel panel-center">
+    <div class="panel-header"><span class="comment-line">// Scan Results</span></div>
+    <div class="panel-body">
+      <div class="result-tree" id="result-tree">
+        <span class="muted">Drop a file or click [Select File]</span>
+      </div>
+      <div class="progress-wrap" id="progress-wrap" style="display:none;">
+        <span class="prompt">$</span>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <span class="progress-text" id="progress-text">0%</span>
+      </div>
+      <div class="segment-map" id="segment-map" style="display:none;">
+        <span class="comment-line">// Segments</span>
+        <div class="segment-blocks" id="segment-blocks"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: settings -->
+  <div class="panel panel-right">
+    <div class="panel-header"><span class="comment-line">// Settings — Scan</span></div>
+    <div class="panel-body settings-form">
+      <label class="setting">
+        <span class="setting-label">Mode:</span>
+        <select id="scan-mode">
+          <option value="quick">Quick (head only)</option>
+          <option value="segmented">Segmented</option>
+        </select>
+      </label>
+      <label class="setting">
+        <span class="setting-label">Segments:</span>
+        <select id="scan-segments">
+          <option value="4">4</option>
+          <option value="8" selected>8</option>
+          <option value="16">16</option>
+        </select>
+      </label>
+      <label class="setting setting-check">
+        <input type="checkbox" id="deep-scan" checked>
+        <span>Deep scan containers</span>
+      </label>
+      <label class="setting setting-check">
+        <input type="checkbox" id="hex-preview-toggle" checked>
+        <span>Show hex preview</span>
+      </label>
+      <label class="setting setting-check">
+        <input type="checkbox" id="recursive-toggle">
+        <span>Recursive</span>
+      </label>
+      <button class="btn btn-accent" id="btn-select-file">
+        <span class="btn-prompt">$</span> Select File
+      </button>
+      <button class="btn" id="btn-rescan" disabled>
+        <i class="fas fa-refresh"></i> Rescan
+      </button>
+      <button class="btn btn-accent" id="btn-scan-inspect-hex" disabled style="display:none;">
+        <i class="fas fa-hexagon"></i> Inspect in Hex
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- _batch Tab -->
+<div class="panel-container tab-content" id="tab-batch" style="display:none;">
+  <div class="panel panel-left">
+    <div class="panel-header"><span class="comment-line">// batch info</span></div>
+    <div class="panel-body">
+      <div class="keyval"><span class="key">Folder:</span><span class="val" id="batch-folder">—</span></div>
+      <div class="keyval"><span class="key">Files:</span><span class="val" id="batch-count">—</span></div>
+      <div class="keyval"><span class="key">Identified:</span><span class="val" id="batch-identified">—</span></div>
+      <button class="btn btn-accent" style="margin-top:12px;" id="btn-select-folder">
+        <span class="btn-prompt">$</span> Select Folder
+      </button>
+    </div>
+  </div>
+  <div class="panel panel-center">
+    <div class="panel-header"><span class="comment-line">// Batch Queue</span></div>
+    <div class="panel-body">
+      <div class="batch-list" id="batch-list">
+        <span class="muted">Select a folder to scan</span>
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-right">
+    <div class="panel-header"><span class="comment-line">// Settings — Batch</span></div>
+    <div class="panel-body settings-form">
+      <label class="setting setting-check">
+        <input type="checkbox" id="batch-select-all" checked>
+        <span>Select all</span>
+      </label>
+      <label class="setting setting-check">
+        <input type="checkbox" id="batch-auto-run">
+        <span>Auto-run on load</span>
+      </label>
+      <button class="btn btn-accent" id="btn-run-batch">
+        <span class="btn-prompt">$</span> Run Batch
+      </button>
+      <div class="inspect-hex-btn" id="inspect-hex-btn-wrap" style="display:none;margin-top:8px;">
+        <div class="keyval"><span class="key">Selected:</span><span class="val" id="selected-batch-file">—</span></div>
+        <button class="btn btn-accent" id="btn-inspect-hex" disabled>
+          <i class="fas fa-hexagon"></i> Inspect in Hex
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loading-overlay" style="display:none;">
+  <div class="loading-spinner">
+    <i class="fas fa-circle-notch fa-spin"></i>
+    <span class="muted">Loading files...</span>
+  </div>
+</div>
+
+<!-- _hex Tab -->
+<div class="panel-container tab-content" id="tab-hex" style="display:none;">
+  <div class="panel panel-left" style="max-width:200px;">
+    <div class="panel-header"><i class="fas fa-list"></i>&nbsp; <span class="comment-line">// Signatures</span></div>
+    <div class="panel-body">
+      <div class="sig-list" id="sig-list">
+        <span class="muted">Load a file to see signatures</span>
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-center">
+    <div class="panel-header"><i class="fas fa-hexagon"></i>&nbsp; <span class="comment-line">// Hex View</span>
+      <span style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+        Go to: <input type="text" id="hex-offset-jump" placeholder="0x" style="width:80px;background:var(--panel);border:1px solid var(--border-subtle);border-radius:2px;color:var(--text);font-family:inherit;font-size:var(--text-xs);padding:2px 6px;">
+        <button id="hex-go-btn" style="background:transparent;border:1px solid var(--border-subtle);color:var(--muted);cursor:pointer;border-radius:2px;padding:2px 8px;font-size:var(--text-xs);"><i class="fas fa-arrow-right"></i></button>
+      </span>
+    </div>
+    <div class="panel-body">
+      <div class="hex-full" id="hex-full">
+        <span class="muted">Select a file via _scan first</span>
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-right">
+    <div class="panel-header"><i class="fas fa-info-circle"></i>&nbsp; <span class="comment-line">// Signature Details</span></div>
+    <div class="panel-body" id="sig-details">
+      <span class="muted">Click a signature to see details</span>
+    </div>
+  </div>
+</div>
+
+<!-- _db Tab -->
+<div class="panel-container tab-content" id="tab-db" style="display:none;">
+  <div class="panel panel-left">
+    <div class="panel-header"><span class="comment-line">// DB Stats</span></div>
+    <div class="panel-body">
+      <div class="keyval"><span class="key">Sigs loaded:</span><span class="val" id="db-count">—</span></div>
+      <div class="keyval"><span class="key">Path:</span><span class="val" id="db-path">signatures.db</span></div>
+    </div>
+  </div>
+  <div class="panel panel-center">
+    <div class="panel-header"><span class="comment-line">// Signature List</span></div>
+    <div class="panel-body">
+      <div class="db-list" id="db-list">
+        <span class="muted">Loading...</span>
+      </div>
+    </div>
+  </div>
+  <div class="panel panel-right">
+    <div class="panel-header"><span class="comment-line">// Settings — DB</span></div>
+    <div class="panel-body settings-form">
+      <button class="btn" id="btn-refresh-db">
+        <i class="fas fa-refresh"></i> Refresh
+      </button>
+      <button class="btn" id="btn-rebuild-seed">
+        <i class="fas fa-seedling"></i> Rebuild Seed DB
+      </button>
+      <button class="btn btn-accent" id="btn-update-web">
+        <i class="fas fa-cloud-download-alt"></i> Update from Web
+      </button>
+      <label class="setting" style="margin-top:8px;">
+        <span class="setting-label">Remote URL:</span>
+        <input type="text" id="remote-sig-url" value="https://raw.githubusercontent.com/HanazonoArchive/lumen-sigs/main/sigs.json" style="background:var(--panel-strong);border:1px solid var(--border-subtle);border-radius:var(--radius-xs);padding:6px 8px;color:var(--text);font-family:var(--font-mono);font-size:var(--text-xs);">
+      </label>
+      <div class="db-detail-box" id="db-detail-box">
+        <span class="muted">Click a signature to see details</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Status Bar -->
+<footer class="status-bar">
+  <div class="status-bar-left">
+    <span class="status-bar-item" id="status-folder">/Lumen</span>
+    <span class="status-bar-separator">|</span>
+    <span class="status-bar-item">🌸</span>
+  </div>
+  <div class="status-bar-right">
+    <span class="status-bar-item" id="status-file-info"></span>
+    <span class="status-bar-separator">|</span>
+    <span class="status-bar-item">EN</span>
+    <span class="status-bar-separator">|</span>
+    <span class="status-bar-item">v0.1.0</span>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

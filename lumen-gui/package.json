@@ -1,0 +1,13 @@
+{
+  "name": "lumen-gui",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "http-server src -p 1420 -c-1 --cors",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "http-server": "^14"
+  }
+}

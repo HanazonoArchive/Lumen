@@ -1,0 +1,690 @@
+// ============================================================
+// Lumen — app.js
+// ============================================================
+
+// ----- State -----
+let lastScanResult = null;
+let lastFilePath = null;
+let allSignatures = [];
+let lastBatchFolder = null;  // track folder for batch→hex navigation
+
+// ----- Tab switching -----
+const tabs = document.querySelectorAll('.tab[data-tab]');
+tabs.forEach(tab => {
+  tab.addEventListener('click', (e) => {
+    e.preventDefault();
+    tabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(tc => tc.style.display = 'none');
+    const target = document.getElementById('tab-' + tab.dataset.tab);
+    if (target) {
+      target.style.display = 'grid';
+      if (tab.dataset.tab === 'db') refreshDbView();
+      if (tab.dataset.tab === 'hex' && lastScanResult) renderHexTab();
+    }
+  });
+});
+document.querySelectorAll('.tab-content').forEach((el, i) => {
+  el.style.display = i === 0 ? 'grid' : 'none';
+});
+
+// ----- Helpers -----
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+function fmtSize(bytes) {
+  if (!bytes && bytes !== 0) return '—';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+  return (bytes / 1073741824).toFixed(2) + ' GB';
+}
+
+function hexToBytes(hexStr) {
+  const bytes = [];
+  for (let i = 0; i < hexStr.length; i += 2) {
+    bytes.push(parseInt(hexStr.substring(i, i + 2), 16));
+  }
+  return bytes;
+}
+
+function bytesToAscii(bytes) {
+  return bytes.map(b => (b >= 32 && b < 127) ? String.fromCharCode(b) : '.').join('');
+}
+
+function escHtml(s) {
+  const el = document.createElement('span');
+  el.textContent = String(s);
+  return el.innerHTML;
+}
+
+// ----- Tauri IPC wrapper -----
+async function invokeTauri(cmd, args = {}) {
+  if (window.__TAURI_INTERNALS__) {
+    const { invoke } = window.__TAURI_INTERNALS__;
+    return await invoke(cmd, args);
+  }
+  console.warn('Tauri unavailable — cmd:', cmd);
+  return null;
+}
+
+// ----- Native file/folder picker (via rfd on Rust side) -----
+async function pickFile() {
+  try {
+    const result = await invokeTauri('pick_file');
+    return result || null;
+  } catch (err) {
+    if (err === 'cancelled') return null;
+    console.error('pick_file error:', err);
+    return null;
+  }
+}
+
+async function pickFolder() {
+  try {
+    const result = await invokeTauri('pick_folder');
+    return result || null;
+  } catch (err) {
+    if (err === 'cancelled') return null;
+    console.error('pick_folder error:', err);
+    return null;
+  }
+}
+
+// ============================================================
+// SCAN
+// ============================================================
+async function doScan(filePath, mode) {
+  lastFilePath = filePath;
+  $('#progress-wrap').style.display = 'flex';
+  $('#progress-fill').style.width = '20%';
+  $('#progress-text').textContent = 'reading...';
+  $('#segment-map').style.display = 'none';
+  $('#btn-scan-inspect-hex').style.display = 'none';
+
+  try {
+    const raw = await invokeTauri('scan_file', { path: filePath, mode });
+    if (!raw) {
+      $('#result-tree').innerHTML = '<span class="muted">Engine unavailable. Is Tauri running?</span>';
+      $('#progress-wrap').style.display = 'none';
+      return;
+    }
+    const data = JSON.parse(raw);
+    lastScanResult = data;
+
+    $('#progress-fill').style.width = '80%';
+    $('#progress-text').textContent = 'parsing...';
+
+    updateScanUI(data, filePath);
+    updateHexPreview(filePath, data);
+    $('#btn-rescan').disabled = false;
+    $('#btn-rescan').dataset.lastFile = filePath;
+    // Show Inspect in Hex button after scan
+    $('#btn-scan-inspect-hex').style.display = 'block';
+    $('#btn-scan-inspect-hex').disabled = false;
+    $('#btn-scan-inspect-hex').dataset.targetPath = filePath;
+
+    $('#progress-fill').style.width = '100%';
+    $('#progress-text').textContent = 'done';
+    setTimeout(() => { $('#progress-wrap').style.display = 'none'; }, 1200);
+
+  } catch (err) {
+    console.error('Scan error:', err);
+    $('#result-tree').innerHTML = `<span class="keyword">Error: ${escHtml(err)}</span>`;
+    $('#progress-wrap').style.display = 'none';
+  }
+}
+
+function updateScanUI(data, filePath) {
+  const fname = filePath.split(/[\\/]/).pop();
+  $('#scan-filename').textContent = fname;
+  $('#scan-filesize').textContent = fmtSize(data.total_size);
+  $('#scan-sig').textContent = data.combined.file_type;
+
+  const tree = $('#result-tree');
+  tree.innerHTML = '';
+  if (data.segments.length === 1) {
+    renderResultTree(data.segments[0].result, tree);
+  } else {
+    renderResultTree(data.combined, tree);
+    data.segments.forEach(seg => renderResultTree(seg.result, tree, 1));
+  }
+
+  if (data.segments.length > 1) renderSegmentMap(data.segments);
+
+  $('#status-file-info').textContent = data.segments.length > 1
+    ? `${data.segments.length} segments`
+    : data.combined.file_type;
+}
+
+function renderResultTree(result, container, depth = 0) {
+  if (!result) return;
+  const div = document.createElement('div');
+  div.className = 'result-item' + (depth > 0 ? ' child' : '');
+  const icon = result.file_type === 'Unknown' ? '?' : '📦';
+  const indent = depth > 0 ? '├─ ' : '';
+  let html = `<span class="result-type">${indent}${icon} ${escHtml(result.file_type)}</span>`;
+  if (result.mime) html += ` <span class="result-mime">${escHtml(result.mime)}</span>`;
+  if (result.extension) html += ` <span class="result-type"> (${escHtml(result.extension)})</span>`;
+  if (result.compression) html += ` <span class="result-comp"> | ${escHtml(result.compression)}</span>`;
+  html += ` <span class="muted" style="font-size:var(--text-xs)">@0x${result.offset.toString(16).toUpperCase()}</span>`;
+  if (result.confidence > 0) html += ` <span class="muted" style="font-size:var(--text-xs)">${(result.confidence*100).toFixed(0)}%</span>`;
+  div.innerHTML = html;
+  container.appendChild(div);
+
+  if (result.children && result.children.length > 0) {
+    result.children.forEach(c => renderResultTree(c, container, depth + 1));
+  }
+}
+
+function renderSegmentMap(segments) {
+  const blocks = $('#segment-blocks');
+  blocks.innerHTML = '';
+  segments.forEach(seg => {
+    const b = document.createElement('div');
+    b.className = 'segment-block ' + (seg.result.file_type === 'Unknown' ? 'unknown' : 'known');
+    b.title = `${seg.result.file_type} @ ${fmtSize(seg.offset)}–${fmtSize(seg.offset + seg.size)}`;
+    b.textContent = seg.result.extension || seg.result.file_type.substring(0, 4);
+    blocks.appendChild(b);
+  });
+  $('#segment-map').style.display = 'block';
+}
+
+async function updateHexPreview(filePath, data) {
+  if (!$('#hex-preview-toggle').checked) return;
+  try {
+    const sigOffset = data.segments[0]?.result.offset || 0;
+    const readOff = Math.max(0, sigOffset - 16);
+    const hex = await invokeTauri('read_hex', { path: filePath, offset: readOff, len: 64 });
+    if (!hex) return;
+    const bytes = hexToBytes(hex);
+    let rowHtml = '';
+    for (let r = 0; r < 4; r++) {
+      const off = readOff + r * 16;
+      const rowBytes = bytes.slice(r * 16, r * 16 + 16);
+      if (rowBytes.length === 0) break;
+      const hexStr = rowBytes.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+      const ascii = bytesToAscii(rowBytes);
+      rowHtml += `<div class="hex-row"><span class="hex-offset">${off.toString(16).padStart(6, '0').toUpperCase()}</span><span class="hex-bytes">${hexStr}</span><span class="hex-ascii">${ascii}</span></div>`;
+    }
+    $('#hex-preview-row').innerHTML = rowHtml;
+  } catch (e) { /* ignore */ }
+}
+
+// ----- File selection (native dialog) -----
+$('#btn-select-file')?.addEventListener('click', async () => {
+  const filePath = await pickFile();
+  if (!filePath) return;
+  const mode = $('#scan-mode').value === 'segmented' ? 'segmented' : 'quick';
+  doScan(filePath, mode);
+});
+
+$('#btn-rescan')?.addEventListener('click', () => {
+  const lastFile = $('#btn-rescan').dataset.lastFile;
+  if (lastFile) {
+    const mode = $('#scan-mode').value === 'segmented' ? 'segmented' : 'quick';
+    doScan(lastFile, mode);
+  }
+});
+
+$('#btn-scan-inspect-hex')?.addEventListener('click', async () => {
+  const path = $('#btn-scan-inspect-hex').dataset.targetPath;
+  if (!path) return;
+  lastFilePath = path;
+  // lastScanResult already set from previous scan
+  document.querySelector('.tab[data-tab="hex"]')?.click();
+});
+
+// Drag-drop — only works if the file path is available
+const scanTab = document.getElementById('tab-scan');
+scanTab?.addEventListener('dragover', (e) => { e.preventDefault(); });
+scanTab?.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  // ponytail: Tauri webview exposes file path on drop items
+  // fallback: use first file's name (won't scan without full path)
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  // Tauri webview: file.path may be available
+  const fpath = file.path;
+  if (fpath) {
+    const mode = $('#scan-mode').value === 'segmented' ? 'segmented' : 'quick';
+    doScan(fpath, mode);
+  } else {
+    $('#result-tree').innerHTML = '<span class="keyword">Drag-drop needs full path. Use [Select File] instead.</span>';
+  }
+});
+
+// ============================================================
+// HEX INSPECTOR TAB
+// ============================================================
+function renderHexTab() {
+  if (!lastScanResult && !lastFilePath) {
+    $('#hex-full').innerHTML = '<span class="muted">Run a scan first, then switch to _hex tab</span>';
+    return;
+  }
+  updateHexFileIndicator();
+  loadHexView();
+  loadSigList();
+}
+
+function updateHexFileIndicator() {
+  let el = $('#hex-file-indicator');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'hex-file-indicator';
+    el.className = 'hex-file-indicator';
+    // Insert after panel-header in hex center panel
+    const header = $('#tab-hex .panel-center .panel-header');
+    if (header && header.nextSibling) {
+      header.parentNode.insertBefore(el, header.nextSibling);
+    } else {
+      $('#tab-hex .panel-center .panel-body')?.before(el);
+    }
+  }
+  if (lastFilePath) {
+    const fname = lastFilePath.split(/[\\/]/).pop();
+    el.innerHTML = `<i class="fas fa-file"></i> ${escHtml(fname)} <span class="muted">— ${escHtml(lastFilePath)}</span>`;
+  } else {
+    el.textContent = 'No file selected';
+  }
+}
+
+let currentHighlightOffset = null;
+
+async function loadHexView(highlightOffset) {
+  if (!lastFilePath) return;
+  currentHighlightOffset = highlightOffset;
+  const hexFull = $('#hex-full');
+  hexFull.innerHTML = '<span class="muted">Loading hex...</span>';
+
+  try {
+    const hex = await invokeTauri('read_hex', { path: lastFilePath, offset: 0, len: 512 });
+    if (!hex) { hexFull.innerHTML = '<span class="muted">Failed to read file</span>'; return; }
+
+    const bytes = hexToBytes(hex);
+    let html = '<div class="hex-table">';
+
+    for (let r = 0; r < bytes.length; r += 16) {
+      const rowBytes = bytes.slice(r, r + 16);
+      const offStr = r.toString(16).padStart(6, '0').toUpperCase();
+      html += `<div class="hex-row" data-offset="${r}">`;
+      html += `<span class="hex-offset">${offStr}</span>`;
+
+      html += '<span class="hex-bytes">';
+      for (let b = 0; b < 16; b++) {
+        const byteOff = r + b;
+        const byteVal = rowBytes[b];
+        if (byteVal === undefined) {
+          html += '<span class="hex-byte empty">  </span>';
+        } else {
+          const hexChar = byteVal.toString(16).padStart(2, '0').toUpperCase();
+          let cssClass = 'hex-byte';
+          if (highlightOffset !== undefined && highlightOffset !== null) {
+            if (byteOff >= highlightOffset && byteOff < highlightOffset + 8) {
+              cssClass += ' hex-highlight sakura';
+            }
+          } else if (lastScanResult) {
+            for (const seg of lastScanResult.segments) {
+              const sigStart = Number(seg.result.offset);
+              if (byteOff >= sigStart && byteOff < sigStart + 8) {
+                cssClass += ' hex-highlight sakura';
+              }
+            }
+          }
+          html += `<span class="${cssClass}">${hexChar}</span>`;
+        }
+        if (b === 7) html += ' ';
+        html += ' ';
+      }
+      html += '</span>';
+
+      html += '<span class="hex-ascii">';
+      for (let b = 0; b < 16; b++) {
+        const byteVal = rowBytes[b];
+        if (byteVal === undefined) { html += ' '; }
+        else { html += escHtml(bytesToAscii([byteVal])); }
+        if (b === 7) html += ' ';
+      }
+      html += '</span></div>';
+    }
+    html += '</div>';
+    hexFull.innerHTML = html;
+  } catch (err) {
+    hexFull.innerHTML = `<span class="keyword">Error: ${escHtml(err)}</span>`;
+  }
+}
+
+async function loadSigList() {
+  if (!lastScanResult) return;
+  const sigList = $('#sig-list');
+  sigList.innerHTML = '';
+
+  const seen = new Set();
+  const allSigs = [];
+
+  function collectSigs(result) {
+    if (!result || result.file_type === 'Unknown') return;
+    const key = result.file_type + '@' + result.offset;
+    if (!seen.has(key)) {
+      seen.add(key);
+      allSigs.push({ name: result.file_type, offset: result.offset });
+    }
+    if (result.children) result.children.forEach(collectSigs);
+  }
+
+  if (lastScanResult.segments) {
+    lastScanResult.segments.forEach(seg => collectSigs(seg.result));
+  }
+
+  allSigs.forEach((sig, i) => {
+    const div = document.createElement('div');
+    div.className = 'sig-item';
+    div.innerHTML = `▶ ${escHtml(sig.name)} <span class="muted" style="font-size:var(--text-xs)">@0x${sig.offset.toString(16).toUpperCase()}</span>`;
+    div.addEventListener('click', () => {
+      document.querySelectorAll('.sig-item').forEach(el => el.classList.remove('active'));
+      div.classList.add('active');
+      loadHexView(sig.offset);
+      showHexDetails(sig.name);
+    });
+    sigList.appendChild(div);
+  });
+
+  if (allSigs.length === 0) {
+    sigList.innerHTML = '<span class="muted">No signatures found</span>';
+  }
+}
+
+function showHexDetails(name) {
+  const details = $('#sig-details');
+  const sig = allSignatures.find(s => s.name === name);
+  if (sig) {
+    details.innerHTML = `
+      <div class="keyval"><span class="key">Name:</span><span class="val">${escHtml(sig.name)}</span></div>
+      <div class="keyval"><span class="key">MIME:</span><span class="val">${escHtml(sig.mime || '—')}</span></div>
+      <div class="keyval"><span class="key">Ext:</span><span class="val">${escHtml(sig.extension || '—')}</span></div>
+      <div class="keyval"><span class="key">Patterns:</span><span class="val">${sig.patterns ? sig.patterns.length : 0}</span></div>
+    `;
+  } else {
+    details.innerHTML = `<div class="keyval"><span class="key">Name:</span><span class="val">${escHtml(name)}</span></div>`;
+  }
+}
+
+// ============================================================
+// BATCH SCAN (native folder dialog)
+// ============================================================
+let batchFiles = [];
+let batchResults = {};    // filename -> scan result
+let batchSelectedFile = null; // currently highlighted file
+
+$('#btn-select-folder')?.addEventListener('click', async () => {
+  // Show loading
+  $('#loading-overlay').style.display = 'flex';
+
+  const folderPath = await pickFolder();
+  if (!folderPath) { $('#loading-overlay').style.display = 'none'; return; }
+
+  $('#batch-folder').textContent = folderPath;
+  $('#batch-identified').textContent = '—';
+  batchResults = {};
+  batchSelectedFile = null;
+  $('#inspect-hex-btn-wrap').style.display = 'none';
+
+  const list = $('#batch-list');
+  list.dataset.folderPath = folderPath;
+  batchFiles = [];
+
+  try {
+    const entries = await invokeTauri('list_folder_files', { path: folderPath });
+    if (entries) {
+      batchFiles = JSON.parse(entries);
+      $('#batch-count').textContent = String(batchFiles.length);
+      list.innerHTML = '';
+      const frag = document.createDocumentFragment();
+      batchFiles.forEach((f, i) => {
+        const div = document.createElement('div');
+        div.className = 'batch-item';
+        div.dataset.index = i;
+        div.dataset.filename = f;
+        div.innerHTML = `
+          <input type="checkbox" ${$('#batch-select-all').checked ? 'checked' : ''} id="batch-cb-${i}">
+          <span class="batch-name">${escHtml(f)}</span>
+          <span class="batch-status wait">—</span>
+        `;
+        // Click = highlight, show Inspect button
+        div.addEventListener('click', () => selectBatchItem(i, div));
+        frag.appendChild(div);
+      });
+      list.appendChild(frag);
+    }
+  } catch (e) {
+    list.innerHTML = `<span class="keyword">Error: ${escHtml(e)}</span>`;
+  } finally {
+    $('#loading-overlay').style.display = 'none';
+  }
+});
+
+function selectBatchItem(index, el) {
+  // Unhighlight previous
+  document.querySelectorAll('.batch-item.selected').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  batchSelectedFile = index;
+
+  const f = batchFiles[index];
+  const folderPath = $('#batch-list').dataset.folderPath;
+  const fullPath = folderPath.replace(/\\/g, '/').replace(/\/$/, '') + '/' + f;
+
+  $('#selected-batch-file').textContent = f;
+
+  // Show the inspect button area
+  $('#inspect-hex-btn-wrap').style.display = 'block';
+
+  // Enable button only if we have a scan result for this file
+  const result = batchResults[f];
+  if (result && result.file_type !== 'Unknown') {
+    $('#btn-inspect-hex').disabled = false;
+  } else {
+    $('#btn-inspect-hex').disabled = true;
+  }
+
+  // Store full path for hex inspection
+  $('#btn-inspect-hex').dataset.targetPath = fullPath;
+}
+
+$('#batch-select-all')?.addEventListener('change', function () {
+  $$('.batch-item input[type=checkbox]').forEach(cb => { cb.checked = this.checked; });
+});
+
+$('#btn-inspect-hex')?.addEventListener('click', async () => {
+  const path = $('#btn-inspect-hex').dataset.targetPath;
+  if (!path) return;
+  // Scan the file first to get signatures for hex view
+  try {
+    const raw = await invokeTauri('scan_file', { path, mode: 'quick' });
+    if (raw) {
+      lastScanResult = JSON.parse(raw);
+    }
+  } catch (e) {
+    // proceed without scan result
+  }
+  lastFilePath = path;
+  // Switch to hex tab — renderHexTab will use lastScanResult + lastFilePath
+  document.querySelector('.tab[data-tab="hex"]')?.click();
+});
+
+$('#btn-run-batch')?.addEventListener('click', async () => {
+  const folderPath = $('#batch-list').dataset.folderPath;
+  if (!folderPath || batchFiles.length === 0) {
+    $('#btn-select-folder').click();
+    return;
+  }
+
+  // Show loading overlay — prevents "not responding"
+  $('#loading-overlay').style.display = 'flex';
+  $('#loading-overlay .loading-spinner span').textContent = 'Scanning...';
+
+  const items = $$('.batch-item');
+  let identified = 0, total = 0;
+
+  for (let i = 0; i < batchFiles.length; i++) {
+    const cb = $(`#batch-cb-${i}`);
+    if (cb && !cb.checked) continue;
+    total++;
+
+    const statusEl = items[i]?.querySelector('.batch-status');
+    if (statusEl) { statusEl.textContent = 'scanning...'; statusEl.className = 'batch-status wait'; }
+
+    const fullPath = folderPath.replace(/\\/g, '/').replace(/\/$/, '') + '/' + batchFiles[i];
+    try {
+      const raw = await invokeTauri('scan_file', { path: fullPath, mode: 'quick' });
+      if (raw) {
+        const data = JSON.parse(raw);
+        const type = data.combined.file_type;
+        if (statusEl) { statusEl.textContent = type; statusEl.className = 'batch-status ' + (type !== 'Unknown' ? 'ok' : 'fail'); }
+        if (type !== 'Unknown') identified++;
+
+        batchResults[batchFiles[i]] = data.combined;
+
+        if (batchSelectedFile === i && type !== 'Unknown') {
+          $('#btn-inspect-hex').disabled = false;
+        }
+      }
+    } catch {
+      if (statusEl) { statusEl.textContent = 'error'; statusEl.className = 'batch-status fail'; }
+    }
+
+    // Yield to event loop every 5 items to keep UI responsive
+    if (i % 5 === 0) {
+      await new Promise(r => setTimeout(r, 1));
+    }
+  }
+
+  $('#batch-identified').textContent = `${identified}/${total}`;
+  $('#status-file-info').textContent = `Batch: ${identified}/${total}`;
+
+  // Hide loading overlay
+  $('#loading-overlay').style.display = 'none';
+});
+
+// ============================================================
+// DB TAB
+// ============================================================
+async function refreshDbView() {
+  try {
+    const raw = await invokeTauri('list_signatures');
+    if (!raw) { $('#db-list').innerHTML = '<span class="muted">Engine unavailable</span>'; return; }
+    const sigs = JSON.parse(raw);
+    allSignatures = sigs;
+    const list = $('#db-list');
+    list.innerHTML = '';
+    sigs.forEach(sig => {
+      const div = document.createElement('div');
+      div.className = 'db-item';
+      div.style.display = 'flex';
+      div.style.justifyContent = 'space-between';
+      div.innerHTML = `<span class="string">${escHtml(sig.name)}</span><span class="muted">${escHtml(sig.extension || '—')}</span>`;
+      div.addEventListener('click', () => showDbDetails(sig));
+      list.appendChild(div);
+    });
+    $('#db-count').textContent = String(sigs.length);
+    $('#db-path').textContent = 'signatures.db';
+  } catch (err) {
+    console.error('DB load:', err);
+    $('#db-list').innerHTML = `<span class="keyword">Error: ${escHtml(err)}</span>`;
+  }
+}
+
+function showDbDetails(sig) {
+  const box = $('#db-detail-box');
+  if (!box) return;
+  let hexHtml = '';
+  if (sig.patterns && sig.patterns.length > 0) {
+    sig.patterns.forEach((p, i) => {
+      const formatted = p.hex_bytes.match(/.{1,2}/g)?.join(' ') || p.hex_bytes;
+      hexHtml += `<span class="hex-chip">@0x${p.offset.toString(16).toUpperCase()} ${formatted}</span>`;
+    });
+  }
+  box.innerHTML = `
+    <div class="detail-divider"></div>
+    <div class="keyval"><span class="key">Name:</span><span class="val string">${escHtml(sig.name)}</span></div>
+    <div class="keyval"><span class="key">MIME:</span><span class="val">${escHtml(sig.mime || '—')}</span></div>
+    <div class="keyval"><span class="key">Ext:</span><span class="val">${escHtml(sig.extension || '—')}</span></div>
+    <div class="keyval"><span class="key">ID:</span><span class="val string">#${sig.id}</span></div>
+    <div class="keyval"><span class="key">Patterns:</span><span class="val">${sig.patterns ? sig.patterns.length : 0}</span></div>
+    ${hexHtml ? `<div class="keyval" style="margin-top:6px;"><span class="key">Hex:</span></div><div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:2px;">${hexHtml}</div>` : ''}
+  `;
+}
+
+$('#btn-refresh-db')?.addEventListener('click', refreshDbView);
+
+$('#btn-rebuild-seed')?.addEventListener('click', async () => {
+  $('#db-list').innerHTML = '<span class="muted">Rebuilding...</span>';
+  try {
+    const result = await invokeTauri('rebuild_seed_db');
+    if (result) {
+      alert(result);
+      refreshDbView();
+    }
+  } catch (err) {
+    alert('Error: ' + err);
+  }
+});
+
+$('#btn-update-web')?.addEventListener('click', async () => {
+  const url = $('#remote-sig-url')?.value?.trim();
+  if (!url) { alert('Enter a remote URL first'); return; }
+
+  const btn = $('#btn-update-web');
+  const origText = btn.innerHTML;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching...';
+  btn.disabled = true;
+
+  try {
+    const result = await invokeTauri('fetch_signatures', { url });
+    if (result) {
+      alert(result);
+      refreshDbView();
+    } else {
+      alert('Engine unavailable');
+    }
+  } catch (err) {
+    console.error('Fetch error:', err);
+    alert('Error: ' + err);
+  } finally {
+    btn.innerHTML = origText;
+    btn.disabled = false;
+  }
+});
+
+// Hex jump to offset
+$('#hex-go-btn')?.addEventListener('click', () => {
+  const input = $('#hex-offset-jump');
+  if (!input) return;
+  let val = input.value.trim();
+  if (!val) return;
+  // Accept hex with or without 0x prefix, also accept decimal
+  let offset;
+  if (val.startsWith('0x') || val.startsWith('0X')) {
+    offset = parseInt(val, 16);
+  } else if (/^[0-9a-fA-F]+$/.test(val)) {
+    offset = parseInt(val, 16);
+  } else {
+    offset = parseInt(val, 10);
+  }
+  if (isNaN(offset)) return;
+  loadHexView(offset);
+});
+
+$('#hex-offset-jump')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') $('#hex-go-btn').click();
+});
+
+// Load DB on startup
+(async () => {
+  try {
+    const raw = await invokeTauri('list_signatures');
+    if (raw) {
+      allSignatures = JSON.parse(raw);
+      $('#db-count').textContent = String(allSignatures.length);
+    }
+  } catch { /* Tauri not running yet */ }
+})();

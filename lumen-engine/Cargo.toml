@@ -1,0 +1,28 @@
+[package]
+name = "lumen-engine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rusqlite = { version = "0.31", features = ["bundled"] }
+rayon = "1.10"
+memmap2 = "0.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hex = "0.4"
+ureq = { version = "2", features = [] }
+
+[[bin]]
+name = "lumen-seed"
+path = "src/bin/seed_db.rs"
+required-features = []
+
+[[bin]]
+name = "lumen-test"
+path = "src/bin/test_scan.rs"
+required-features = []
+
+[[bin]]
+name = "lumen-fetch"
+path = "src/bin/fetch_sigs.rs"
+required-features = []

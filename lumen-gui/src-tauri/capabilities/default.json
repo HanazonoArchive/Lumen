@@ -1,0 +1,9 @@
+{
+  "identifier": "default",
+  "description": "Default capability for Lumen",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:default"
+  ]
+}

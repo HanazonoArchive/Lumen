@@ -1,0 +1,15 @@
+target/
+node_modules/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.DS_Store
+Thumbs.db
+lumen-sigs.json
+*.pyc
+.env
+.vscode/
+.idea/
+*.log
+dist/

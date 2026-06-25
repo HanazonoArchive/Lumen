@@ -1,0 +1,765 @@
+[
+  {
+    "ext": ".zip",
+    "hex": "504B0304",
+    "mime": "application/zip",
+    "name": "ZIP archive",
+    "offset": 0
+  },
+  {
+    "ext": ".zip",
+    "hex": "504B0506",
+    "mime": "application/zip",
+    "name": "ZIP archive (empty)",
+    "offset": 0
+  },
+  {
+    "ext": ".zip",
+    "hex": "504B0708",
+    "mime": "application/zip",
+    "name": "ZIP archive (spanned)",
+    "offset": 0
+  },
+  {
+    "ext": ".rar",
+    "hex": "526172211A0700",
+    "mime": "application/vnd.rar",
+    "name": "RAR archive v1.5",
+    "offset": 0
+  },
+  {
+    "ext": ".rar",
+    "hex": "526172211A070100",
+    "mime": "application/vnd.rar",
+    "name": "RAR archive v5",
+    "offset": 0
+  },
+  {
+    "ext": ".7z",
+    "hex": "377ABCAF271C",
+    "mime": "application/x-7z-compressed",
+    "name": "7-Zip archive",
+    "offset": 0
+  },
+  {
+    "ext": ".gz",
+    "hex": "1F8B08",
+    "mime": "application/gzip",
+    "name": "GZIP compressed",
+    "offset": 0
+  },
+  {
+    "ext": ".bz2",
+    "hex": "425A68",
+    "mime": "application/x-bzip2",
+    "name": "BZIP2 compressed",
+    "offset": 0
+  },
+  {
+    "ext": ".xz",
+    "hex": "FD377A585A00",
+    "mime": "application/x-xz",
+    "name": "XZ compressed",
+    "offset": 0
+  },
+  {
+    "ext": ".tar",
+    "hex": "757374617200",
+    "mime": "application/x-tar",
+    "name": "TAR POSIX archive",
+    "offset": 257
+  },
+  {
+    "ext": ".lz4",
+    "hex": "04224D18",
+    "mime": "application/x-lz4",
+    "name": "LZ4 compressed",
+    "offset": 0
+  },
+  {
+    "ext": ".cab",
+    "hex": "4D534346",
+    "mime": "application/vnd.ms-cab-compressed",
+    "name": "CAB archive",
+    "offset": 0
+  },
+  {
+    "ext": ".arj",
+    "hex": "60EA",
+    "mime": "application/x-arj",
+    "name": "ARJ archive",
+    "offset": 0
+  },
+  {
+    "ext": ".br",
+    "hex": "CEB2CF81",
+    "mime": "application/brotli",
+    "name": "Brotli compressed",
+    "offset": 0
+  },
+  {
+    "ext": ".squashfs",
+    "hex": "68737173",
+    "mime": "application/x-squashfs",
+    "name": "SquashFS",
+    "offset": 0
+  },
+  {
+    "ext": ".zst",
+    "hex": "28B52FFD",
+    "mime": "application/zstd",
+    "name": "Zstandard",
+    "offset": 0
+  },
+  {
+    "ext": ".png",
+    "hex": "89504E470D0A1A0A",
+    "mime": "image/png",
+    "name": "PNG image",
+    "offset": 0
+  },
+  {
+    "ext": ".jpg",
+    "hex": "FFD8FF",
+    "mime": "image/jpeg",
+    "name": "JPEG image",
+    "offset": 0
+  },
+  {
+    "ext": ".jpg",
+    "hex": "FFD8FFE1",
+    "mime": "image/jpeg",
+    "name": "JPEG Exif",
+    "offset": 0
+  },
+  {
+    "ext": ".gif",
+    "hex": "474946383961",
+    "mime": "image/gif",
+    "name": "GIF89a",
+    "offset": 0
+  },
+  {
+    "ext": ".gif",
+    "hex": "474946383761",
+    "mime": "image/gif",
+    "name": "GIF87a",
+    "offset": 0
+  },
+  {
+    "ext": ".bmp",
+    "hex": "424D",
+    "mime": "image/bmp",
+    "name": "BMP image",
+    "offset": 0
+  },
+  {
+    "ext": ".webp",
+    "hex": "52494646",
+    "mime": "image/webp",
+    "name": "WebP image",
+    "offset": 0
+  },
+  {
+    "ext": ".tiff",
+    "hex": "49492A00",
+    "mime": "image/tiff",
+    "name": "TIFF little-endian",
+    "offset": 0
+  },
+  {
+    "ext": ".tiff",
+    "hex": "4D4D002A",
+    "mime": "image/tiff",
+    "name": "TIFF big-endian",
+    "offset": 0
+  },
+  {
+    "ext": ".ico",
+    "hex": "00000100",
+    "mime": "image/x-icon",
+    "name": "ICO icon",
+    "offset": 0
+  },
+  {
+    "ext": ".psd",
+    "hex": "38425053",
+    "mime": "image/vnd.adobe.photoshop",
+    "name": "Photoshop PSD",
+    "offset": 0
+  },
+  {
+    "ext": ".xcf",
+    "hex": "67696D702078636620",
+    "mime": "image/x-xcf",
+    "name": "GIMP XCF",
+    "offset": 0
+  },
+  {
+    "ext": ".heic",
+    "hex": "6674797068656963",
+    "mime": "image/heif",
+    "name": "HEIC image",
+    "offset": 4
+  },
+  {
+    "ext": ".avif",
+    "hex": "6674797061766966",
+    "mime": "image/avif",
+    "name": "AVIF image",
+    "offset": 4
+  },
+  {
+    "ext": ".jp2",
+    "hex": "0000000C6A502020",
+    "mime": "image/jp2",
+    "name": "JPEG 2000 JP2",
+    "offset": 0
+  },
+  {
+    "ext": ".exr",
+    "hex": "762F3101",
+    "mime": "image/x-exr",
+    "name": "OpenEXR image",
+    "offset": 0
+  },
+  {
+    "ext": ".ktx2",
+    "hex": "AB4B5458203230",
+    "mime": "image/ktx2",
+    "name": "KTX2 texture",
+    "offset": 0
+  },
+  {
+    "ext": ".dds",
+    "hex": "44445320",
+    "mime": "image/vnd.ms-dds",
+    "name": "DDS texture",
+    "offset": 0
+  },
+  {
+    "ext": ".qoi",
+    "hex": "716F6966",
+    "mime": "image/qoi",
+    "name": "QOI image",
+    "offset": 0
+  },
+  {
+    "ext": ".cr2",
+    "hex": "49492A00100000004352",
+    "mime": "image/x-canon-cr2",
+    "name": "Canon CR2 raw",
+    "offset": 0
+  },
+  {
+    "ext": ".exe",
+    "hex": "4D5A",
+    "mime": "application/x-msdownload",
+    "name": "PE executable",
+    "offset": 0
+  },
+  {
+    "ext": ".exe",
+    "hex": "4C45",
+    "mime": "application/x-msdownload",
+    "name": "LE executable (OS/2)",
+    "offset": 0
+  },
+  {
+    "ext": null,
+    "hex": "7F454C4601010100",
+    "mime": "application/x-elf",
+    "name": "ELF 32-bit LSB",
+    "offset": 0
+  },
+  {
+    "ext": null,
+    "hex": "7F454C4602010100",
+    "mime": "application/x-elf",
+    "name": "ELF 64-bit LSB",
+    "offset": 0
+  },
+  {
+    "ext": null,
+    "hex": "FEEDFACE",
+    "mime": "application/x-mach-binary",
+    "name": "Mach-O 32-bit LE",
+    "offset": 0
+  },
+  {
+    "ext": null,
+    "hex": "FEEDFACF",
+    "mime": "application/x-mach-binary",
+    "name": "Mach-O 64-bit LE",
+    "offset": 0
+  },
+  {
+    "ext": null,
+    "hex": "CAFEBABE",
+    "mime": "application/x-mach-binary",
+    "name": "Mach-O Universal",
+    "offset": 0
+  },
+  {
+    "ext": ".o",
+    "hex": "4C01",
+    "mime": "application/x-coff",
+    "name": "COFF object (x86)",
+    "offset": 0
+  },
+  {
+    "ext": ".pdf",
+    "hex": "255044462D",
+    "mime": "application/pdf",
+    "name": "PDF document",
+    "offset": 0
+  },
+  {
+    "ext": ".doc",
+    "hex": "D0CF11E0A1B11AE1",
+    "mime": "application/x-ole-storage",
+    "name": "OLE2 Compound",
+    "offset": 0
+  },
+  {
+    "ext": ".rtf",
+    "hex": "7B5C72746631",
+    "mime": "application/rtf",
+    "name": "RTF document",
+    "offset": 0
+  },
+  {
+    "ext": ".ps",
+    "hex": "25215053",
+    "mime": "application/postscript",
+    "name": "PostScript",
+    "offset": 0
+  },
+  {
+    "ext": ".djvu",
+    "hex": "41542654464F524D",
+    "mime": "image/vnd.djvu",
+    "name": "DjVu document",
+    "offset": 0
+  },
+  {
+    "ext": ".chm",
+    "hex": "49545346",
+    "mime": "application/x-chm",
+    "name": "CHM help",
+    "offset": 0
+  },
+  {
+    "ext": ".mp3",
+    "hex": "494433",
+    "mime": "audio/mpeg",
+    "name": "MP3 ID3v2",
+    "offset": 0
+  },
+  {
+    "ext": ".mp3",
+    "hex": "FFFB",
+    "mime": "audio/mpeg",
+    "name": "MP3 MPEG v1",
+    "offset": 0
+  },
+  {
+    "ext": ".flac",
+    "hex": "664C6143",
+    "mime": "audio/flac",
+    "name": "FLAC audio",
+    "offset": 0
+  },
+  {
+    "ext": ".ogg",
+    "hex": "4F676753",
+    "mime": "audio/ogg",
+    "name": "OGG audio",
+    "offset": 0
+  },
+  {
+    "ext": ".mid",
+    "hex": "4D546864",
+    "mime": "audio/midi",
+    "name": "MIDI audio",
+    "offset": 0
+  },
+  {
+    "ext": ".aiff",
+    "hex": "464F524D",
+    "mime": "audio/aiff",
+    "name": "AIFF audio",
+    "offset": 0
+  },
+  {
+    "ext": ".aac",
+    "hex": "FFF1",
+    "mime": "audio/aac",
+    "name": "AAC",
+    "offset": 0
+  },
+  {
+    "ext": ".ac3",
+    "hex": "0B77",
+    "mime": "audio/ac3",
+    "name": "AC-3 Dolby Digital",
+    "offset": 0
+  },
+  {
+    "ext": ".wma",
+    "hex": "3026B2758E66CF11",
+    "mime": "audio/x-ms-wma",
+    "name": "WMA audio",
+    "offset": 0
+  },
+  {
+    "ext": ".ape",
+    "hex": "4D414320",
+    "mime": "audio/x-ape",
+    "name": "Monkey's Audio",
+    "offset": 0
+  },
+  {
+    "ext": ".tta",
+    "hex": "54544131",
+    "mime": "audio/x-tta",
+    "name": "TrueAudio TTA",
+    "offset": 0
+  },
+  {
+    "ext": ".amr",
+    "hex": "2321414D52",
+    "mime": "audio/amr",
+    "name": "AMR audio",
+    "offset": 0
+  },
+  {
+    "ext": ".mp4",
+    "hex": "66747970",
+    "mime": "video/mp4",
+    "name": "MP4 video",
+    "offset": 4
+  },
+  {
+    "ext": ".mov",
+    "hex": "667479706D6F6F76",
+    "mime": "video/quicktime",
+    "name": "QuickTime MOV",
+    "offset": 4
+  },
+  {
+    "ext": ".mkv",
+    "hex": "1A45DFA3",
+    "mime": "video/x-matroska",
+    "name": "Matroska MKV",
+    "offset": 0
+  },
+  {
+    "ext": ".flv",
+    "hex": "464C5601",
+    "mime": "video/x-flv",
+    "name": "FLV video",
+    "offset": 0
+  },
+  {
+    "ext": ".swf",
+    "hex": "465753",
+    "mime": "application/x-shockwave-flash",
+    "name": "Flash SWF",
+    "offset": 0
+  },
+  {
+    "ext": ".mpg",
+    "hex": "000001BA",
+    "mime": "video/mpeg",
+    "name": "MPEG-1 System",
+    "offset": 0
+  },
+  {
+    "ext": ".ts",
+    "hex": "47",
+    "mime": "video/mp2t",
+    "name": "MPEG-2 TS",
+    "offset": 0
+  },
+  {
+    "ext": ".3gp",
+    "hex": "66747970336770",
+    "mime": "video/3gpp",
+    "name": "3GPP video",
+    "offset": 4
+  },
+  {
+    "ext": ".bik",
+    "hex": "42494B",
+    "mime": "video/x-bink",
+    "name": "Bink video",
+    "offset": 0
+  },
+  {
+    "ext": ".dv",
+    "hex": "1F0700",
+    "mime": "video/x-dv",
+    "name": "DV video",
+    "offset": 0
+  },
+  {
+    "ext": ".h264",
+    "hex": "00000001",
+    "mime": "video/h264",
+    "name": "H.264 NAL",
+    "offset": 0
+  },
+  {
+    "ext": ".ttf",
+    "hex": "0001000000",
+    "mime": "font/ttf",
+    "name": "TrueType font",
+    "offset": 0
+  },
+  {
+    "ext": ".otf",
+    "hex": "4F54544F",
+    "mime": "font/otf",
+    "name": "OpenType font",
+    "offset": 0
+  },
+  {
+    "ext": ".woff",
+    "hex": "774F4646",
+    "mime": "font/woff",
+    "name": "WOFF font",
+    "offset": 0
+  },
+  {
+    "ext": ".woff2",
+    "hex": "774F4632",
+    "mime": "font/woff2",
+    "name": "WOFF2 font",
+    "offset": 0
+  },
+  {
+    "ext": ".iso",
+    "hex": "4344303031",
+    "mime": "application/x-iso9660-image",
+    "name": "ISO 9660 CD",
+    "offset": 32769
+  },
+  {
+    "ext": null,
+    "hex": "4E54465320202020",
+    "mime": "application/x-ntfs",
+    "name": "NTFS filesystem",
+    "offset": 3
+  },
+  {
+    "ext": null,
+    "hex": "53EF",
+    "mime": "application/x-ext4",
+    "name": "ext2/3/4 filesystem",
+    "offset": 1080
+  },
+  {
+    "ext": ".vhd",
+    "hex": "636F6E6563746978",
+    "mime": "application/x-vhd",
+    "name": "VHD disk image",
+    "offset": 0
+  },
+  {
+    "ext": ".vhdx",
+    "hex": "7668647866696C65",
+    "mime": "application/x-vhdx",
+    "name": "VHDX disk image",
+    "offset": 0
+  },
+  {
+    "ext": ".vmdk",
+    "hex": "4B444D",
+    "mime": "application/x-vmdk",
+    "name": "VMDK disk",
+    "offset": 0
+  },
+  {
+    "ext": ".dmg",
+    "hex": "7801730D626260",
+    "mime": "application/x-apple-diskimage",
+    "name": "Apple DMG",
+    "offset": 0
+  },
+  {
+    "ext": ".qcow2",
+    "hex": "514649FB",
+    "mime": "application/x-qcow2",
+    "name": "QEMU QCOW2",
+    "offset": 0
+  },
+  {
+    "ext": ".sqlite",
+    "hex": "53514C69746520666F726D6174203300",
+    "mime": "application/x-sqlite3",
+    "name": "SQLite3 database",
+    "offset": 0
+  },
+  {
+    "ext": ".sqlite-wal",
+    "hex": "377F0682",
+    "mime": "application/x-sqlite3",
+    "name": "SQLite3 WAL",
+    "offset": 0
+  },
+  {
+    "ext": ".dex",
+    "hex": "6465780A",
+    "mime": "application/x-dex",
+    "name": "Dalvik DEX",
+    "offset": 0
+  },
+  {
+    "ext": ".wasm",
+    "hex": "0061736D",
+    "mime": "application/wasm",
+    "name": "WebAssembly WASM",
+    "offset": 0
+  },
+  {
+    "ext": ".luac",
+    "hex": "1B4C7561",
+    "mime": "application/x-lua-bytecode",
+    "name": "Lua bytecode",
+    "offset": 0
+  },
+  {
+    "ext": ".pyc",
+    "hex": "42",
+    "mime": "application/x-python-bytecode",
+    "name": "Python bytecode 3.3+",
+    "offset": 0
+  },
+  {
+    "ext": ".cer",
+    "hex": "3082",
+    "mime": "application/pkix-cert",
+    "name": "X.509 DER cert",
+    "offset": 0
+  },
+  {
+    "ext": ".pfx",
+    "hex": "3084",
+    "mime": "application/x-pkcs12",
+    "name": "PKCS#12 PFX",
+    "offset": 0
+  },
+  {
+    "ext": ".asc",
+    "hex": "2D2D2D2D2D424547494E2050",
+    "mime": "application/pgp-keys",
+    "name": "OpenPGP public key",
+    "offset": 0
+  },
+  {
+    "ext": ".pcap",
+    "hex": "D4C3B2A1",
+    "mime": "application/vnd.tcpdump.pcap",
+    "name": "PCAP (LE)",
+    "offset": 0
+  },
+  {
+    "ext": ".pcap",
+    "hex": "A1B2C3D4",
+    "mime": "application/vnd.tcpdump.pcap",
+    "name": "PCAP (BE)",
+    "offset": 0
+  },
+  {
+    "ext": ".pcapng",
+    "hex": "0A0D0D0A",
+    "mime": "application/vnd.tcpdump.pcap",
+    "name": "PCAPNG capture",
+    "offset": 0
+  },
+  {
+    "ext": ".img",
+    "hex": "414E44524F494421",
+    "mime": "application/x-android-boot",
+    "name": "Android boot img",
+    "offset": 0
+  },
+  {
+    "ext": ".lnk",
+    "hex": "4C00000001140200",
+    "mime": "application/x-ms-shortcut",
+    "name": "Windows LNK shortcut",
+    "offset": 0
+  },
+  {
+    "ext": null,
+    "hex": "72656766",
+    "mime": "application/x-ms-registry",
+    "name": "Windows registry hive",
+    "offset": 0
+  },
+  {
+    "ext": ".evtx",
+    "hex": "456C6646696C65",
+    "mime": "application/x-ms-evtx",
+    "name": "Windows EVTX log",
+    "offset": 0
+  },
+  {
+    "ext": ".dmp",
+    "hex": "4D444D5093A7",
+    "mime": "application/x-ms-minidump",
+    "name": "Windows Minidump",
+    "offset": 0
+  },
+  {
+    "ext": ".rpm",
+    "hex": "EDABEEDB",
+    "mime": "application/x-rpm",
+    "name": "RPM package",
+    "offset": 0
+  },
+  {
+    "ext": ".deb",
+    "hex": "213C617263683E",
+    "mime": "application/vnd.debian.binary-package",
+    "name": "DEB package",
+    "offset": 0
+  },
+  {
+    "ext": ".nes",
+    "hex": "4E45531A",
+    "mime": "application/x-nintendo-nes-rom",
+    "name": "Nintendo NES ROM",
+    "offset": 0
+  },
+  {
+    "ext": ".z64",
+    "hex": "80371240",
+    "mime": "application/x-nintendo-64-rom",
+    "name": "Nintendo 64 ROM",
+    "offset": 0
+  },
+  {
+    "ext": ".nds",
+    "hex": "00010000",
+    "mime": "application/x-nintendo-ds-rom",
+    "name": "Nintendo DS ROM",
+    "offset": 0
+  },
+  {
+    "ext": ".gba",
+    "hex": "00008000",
+    "mime": "application/x-nintendo-gba-rom",
+    "name": "Nintendo GBA ROM",
+    "offset": 0
+  },
+  {
+    "ext": ".md",
+    "hex": "00000800",
+    "mime": "application/x-sega-genesis-rom",
+    "name": "Sega Genesis ROM",
+    "offset": 0
+  }
+]

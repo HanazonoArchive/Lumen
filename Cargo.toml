@@ -1,0 +1,3 @@
+[workspace]
+members = ["lumen-engine", "lumen-gui/src-tauri"]
+resolver = "2"

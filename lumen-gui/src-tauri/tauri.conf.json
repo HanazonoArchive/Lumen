@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/tauri-schema/main/schema.json",
+  "productName": "Lumen",
+  "version": "0.1.0",
+  "identifier": "com.hanazono.lumen",
+  "build": {
+    "frontendDist": "../src",
+    "beforeDevCommand": "",
+    "beforeBuildCommand": ""
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Lumen — RE File Identifier",
+        "width": 1050,
+        "height": 680,
+        "minWidth": 800,
+        "minHeight": 500,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}
